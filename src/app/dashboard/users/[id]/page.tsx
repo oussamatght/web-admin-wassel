@@ -42,9 +42,43 @@ import {
   Download,
   ExternalLink,
   Image as ImageIcon,
+  XCircle,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import type { User } from "@/types";
 import { useState } from "react";
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  "commerceRegister.jpg": "Registre de commerce",
+  "nationalId.jpg": "Carte d'identité",
+  "permis.jpg": "Permis de conduire",
+  "carteGrise.jpg": "Carte grise",
+  "vehiclePhoto.jpg": "Photo du véhicule",
+  "selfiePermis.jpg": "Selfie avec permis",
+};
+
+function getDocLabel(type: string): string {
+  if (DOC_TYPE_LABELS[type]) return DOC_TYPE_LABELS[type];
+  // Try without extension
+  const base = type.replace(/\.\w+$/, "");
+  const labels: Record<string, string> = {
+    commerceRegister: "Registre de commerce",
+    nationalId: "Carte d'identité",
+    permis: "Permis de conduire",
+    carteGrise: "Carte grise",
+    vehiclePhoto: "Photo du véhicule",
+    selfiePermis: "Selfie avec permis",
+  };
+  return labels[base] || type;
+}
 
 interface UserDetailResponse {
   user: User;
@@ -97,14 +131,23 @@ export default function UserDetailPage() {
   });
 
   const verifyMutation = useMutation({
-    mutationFn: () => apiPatch("/admin/users/" + id + "/verify"),
-    onSuccess: () => {
-      toast.success("Utilisateur vérifié");
+    mutationFn: (body: { action: string; rejectionReason?: string }) =>
+      apiPatch("/admin/users/" + id + "/verify", body),
+    onSuccess: (_, variables) => {
+      toast.success(
+        variables.action === "reject"
+          ? "Utilisateur rejeté"
+          : "Utilisateur vérifié",
+      );
       queryClient.invalidateQueries({ queryKey: ["admin-user", id] });
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setRejectDialogOpen(false);
     },
     onError: () => toast.error("Erreur de vérification"),
   });
+
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   if (isLoading) {
     return (
@@ -250,26 +293,40 @@ export default function UserDetailPage() {
             {/* Actions */}
             <div className="flex flex-col gap-2 self-start">
               {user.accountStatus === "pending_verification" && (
-                <Button
-                  size="sm"
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  onClick={() =>
-                    setConfirmDialog({
-                      open: true,
-                      title: "Vérifier cet utilisateur ?",
-                      description:
-                        user.firstName +
-                        " " +
-                        user.lastName +
-                        " sera marqué comme vérifié.",
-                      variant: "default",
-                      onConfirm: async () => {
-                        await verifyMutation.mutateAsync();
-                      },
-                    })
-                  }>
-                  <CheckCircle className="mr-1 h-4 w-4" /> Vérifier
-                </Button>
+                <>
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() =>
+                      setConfirmDialog({
+                        open: true,
+                        title: "Approuver cet utilisateur ?",
+                        description:
+                          user.firstName +
+                          " " +
+                          user.lastName +
+                          " sera marqué comme vérifié et activé.",
+                        variant: "default",
+                        onConfirm: async () => {
+                          await verifyMutation.mutateAsync({
+                            action: "approve",
+                          });
+                        },
+                      })
+                    }>
+                    <CheckCircle className="mr-1 h-4 w-4" /> Approuver
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-red-300 text-red-700 hover:bg-red-50"
+                    onClick={() => {
+                      setRejectionReason("");
+                      setRejectDialogOpen(true);
+                    }}>
+                    <XCircle className="mr-1 h-4 w-4" /> Rejeter
+                  </Button>
+                </>
               )}
               {user.accountStatus !== "active" && (
                 <Button
@@ -465,7 +522,9 @@ export default function UserDetailPage() {
                               <div className="flex items-center gap-2 min-w-0">
                                 <ImageIcon className="h-4 w-4 text-slate-400 shrink-0" />
                                 <span className="text-xs font-medium text-slate-600 truncate">
-                                  {doc.type || `Document ${idx + 1}`}
+                                  {getDocLabel(
+                                    doc.type || `Document ${idx + 1}`,
+                                  )}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1">
@@ -569,6 +628,52 @@ export default function UserDetailPage() {
         variant={confirmDialog.variant}
         onConfirm={confirmDialog.onConfirm}
       />
+
+      {/* Rejection Dialog */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rejeter la vérification</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-slate-500">
+              Expliquez à {user.firstName} {user.lastName} pourquoi ses
+              documents sont rejetés.
+            </p>
+            <div>
+              <Label htmlFor="rejectionReason" className="text-sm">
+                Motif du rejet
+              </Label>
+              <Textarea
+                id="rejectionReason"
+                placeholder="Ex: Documents illisibles, registre de commerce expiré..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="mt-1.5"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRejectDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={verifyMutation.isPending}
+              onClick={() =>
+                verifyMutation.mutate({
+                  action: "reject",
+                  rejectionReason: rejectionReason || undefined,
+                })
+              }>
+              {verifyMutation.isPending ? "..." : "Confirmer le rejet"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

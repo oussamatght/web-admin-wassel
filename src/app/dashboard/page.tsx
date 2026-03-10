@@ -28,6 +28,8 @@ import {
   TrendingUp,
   Truck,
   Eye,
+  AlertTriangle,
+  CreditCard,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -43,7 +45,12 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import type { DashboardStats, Order, PlatformSettings } from "@/types";
+import type {
+  DashboardStats,
+  Order,
+  PlatformSettings,
+  ChargilyPaymentStatus,
+} from "@/types";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "#EAB308",
@@ -80,6 +87,13 @@ export default function DashboardPage() {
   const { data: settings } = useQuery({
     queryKey: ["platform-settings"],
     queryFn: () => apiGet<PlatformSettings>("/admin/settings"),
+  });
+
+  const { data: paymentStatus } = useQuery({
+    queryKey: ["chargily-status"],
+    queryFn: () =>
+      apiGet<ChargilyPaymentStatus>("/admin/settings/payment-status"),
+    retry: false,
   });
 
   // --- Socket live feed ---
@@ -320,6 +334,39 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      {/* Chargily Payment Status Banner */}
+      {paymentStatus && (
+        <div
+          className={`rounded-xl border p-4 flex items-center gap-3 ${
+            paymentStatus.mode === "TEST"
+              ? "border-yellow-300 bg-yellow-50"
+              : "border-green-300 bg-green-50"
+          }`}>
+          {paymentStatus.mode === "TEST" ? (
+            <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
+          ) : (
+            <CreditCard className="h-5 w-5 text-green-600 shrink-0" />
+          )}
+          <div className="text-sm">
+            <span
+              className={`font-semibold ${
+                paymentStatus.mode === "TEST"
+                  ? "text-yellow-700"
+                  : "text-green-700"
+              }`}>
+              Chargily Pay —{" "}
+              {paymentStatus.mode === "TEST" ? "Mode TEST" : "Mode PRODUCTION"}
+            </span>
+            {paymentStatus.mode === "TEST" && (
+              <span className="ml-2 text-yellow-600">
+                Les paiements ne sont pas réels. Passez en mode production avant
+                le lancement.
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Business Rules Banner */}
       <div className="rounded-xl border border-[#FF6B00]/20 bg-[#FFF3E8] p-4">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
@@ -328,19 +375,22 @@ export default function DashboardPage() {
           </span>
           <span className="text-slate-700">
             Commission vendeur :{" "}
-            <strong>{settings?.sellerCommission ?? 5}%</strong> / commande
+            <strong>
+              {settings?.commissionType === "percentage"
+                ? `${settings?.commissionValue ?? 5}%`
+                : formatDA(settings?.commissionValue ?? 250)}
+            </strong>{" "}
+            / commande
           </span>
           <span className="text-slate-300">|</span>
           <span className="text-slate-700">
             Commission livreur :{" "}
-            <strong>{settings?.driverCommissionPercent ?? 8.7}%</strong>
+            <strong>{settings?.deliveryCommissionPercent ?? 8.7}%</strong>
           </span>
           <span className="text-slate-300">|</span>
           <span className="text-slate-700">
             Abonnement prestataire :{" "}
-            <strong>
-              {formatDA(settings?.serviceProviderSubscription ?? 800)}
-            </strong>{" "}
+            <strong>{formatDA(settings?.serviceSubscriptionFee ?? 800)}</strong>{" "}
             / mois
           </span>
         </div>

@@ -184,6 +184,32 @@ export interface Notification {
   createdAt: string
 }
 
+export interface PlatformSettings {
+  _id: string
+  key: string
+  commissionType: 'percentage' | 'fixed'
+  commissionValue: number
+  deliveryCommissionPercent: number
+  serviceSubscriptionFee: number
+  deliverySplitClient: number
+  deliverySplitSeller: number
+  minWithdrawalAmount: number
+  // Legacy
+  sellerCommission: number
+  driverCommissionPercent: number
+  serviceProviderSubscription: number
+  sellerLocalDeliverySharePercent: number
+  updatedAt: string
+  createdAt: string
+}
+
+export interface ChargilyPaymentStatus {
+  isLive?: boolean
+  mode: string
+  currency?: string
+  error?: string
+}
+
 export interface DashboardStats {
   totalRevenue: number
   totalOrders: number
@@ -216,17 +242,6 @@ export interface Transaction {
   relatedOrder?: string
   relatedDispute?: string
   createdAt: string
-}
-
-export interface PlatformSettings {
-  _id: string
-  key: string
-  sellerCommission: number
-  driverCommissionPercent: number
-  serviceProviderSubscription: number
-  sellerLocalDeliverySharePercent: number
-  createdAt: string
-  updatedAt: string
 }
 
 export interface PaginatedResponse<T> {
