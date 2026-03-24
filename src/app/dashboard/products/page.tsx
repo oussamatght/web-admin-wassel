@@ -116,14 +116,15 @@ export default function ProductsPage() {
   const products = data?.products ?? [];
   const pagination = data?.pagination;
 
-  const approveMutation = useMutation({
-    mutationFn: (id: string) => apiPatch("/admin/products/" + id + "/approve"),
-    onSuccess: () => {
-      toast.success("Produit approuvé");
+  const approvalMutation = useMutation({
+    mutationFn: ({ id, isApproved }: { id: string; isApproved: boolean }) =>
+      apiPatch("/admin/products/" + id + "/approve", { isApproved }),
+    onSuccess: (_, { isApproved }) => {
+      toast.success(isApproved ? "Produit accepté" : "Produit rejeté");
       queryClient.invalidateQueries({ queryKey: ["admin-products"] });
       refetch();
     },
-    onError: () => toast.error("Erreur lors de l'approbation"),
+    onError: () => toast.error("Erreur lors de la mise à jour"),
   });
 
   const toggleMutation = useMutation({
@@ -261,22 +262,45 @@ export default function ProductsPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {p.isApproved && (
+              <DropdownMenuItem
+                className="text-red-600"
+                onClick={() =>
+                  setConfirmDialog({
+                    open: true,
+                    title: "Rejeter ce produit ?",
+                    description:
+                      '"' + p.title + '" ne sera plus visible par les acheteurs.',
+                    variant: "danger",
+                    onConfirm: async () => {
+                      await approvalMutation.mutateAsync({
+                        id: p._id,
+                        isApproved: false,
+                      });
+                    },
+                  })
+                }>
+                <XCircle className="mr-2 h-4 w-4 text-red-600" /> Rejeter
+              </DropdownMenuItem>
+            )}
             {!p.isApproved && (
               <DropdownMenuItem
                 onClick={() =>
                   setConfirmDialog({
                     open: true,
-                    title: "Approuver ce produit ?",
+                    title: "Accepter ce produit ?",
                     description:
                       '"' + p.title + '" sera visible par les acheteurs.',
                     variant: "default",
                     onConfirm: async () => {
-                      await approveMutation.mutateAsync(p._id);
+                      await approvalMutation.mutateAsync({
+                        id: p._id,
+                        isApproved: true,
+                      });
                     },
                   })
                 }>
-                <CheckCircle className="mr-2 h-4 w-4 text-green-600" />{" "}
-                Approuver
+                <CheckCircle className="mr-2 h-4 w-4 text-green-600" /> Accepter
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
