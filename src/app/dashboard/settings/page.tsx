@@ -36,15 +36,64 @@ import {
 } from "lucide-react";
 import type { PlatformSettings } from "@/types";
 
-const settingsSchema = z.object({
-  commissionType: z.enum(["percentage", "fixed"]),
-  commissionValue: z.number().min(0),
-  deliveryCommissionPercent: z.number().min(0).max(100, "Max 100%"),
-  serviceSubscriptionFee: z.number().min(0),
-  deliverySplitClient: z.number().min(0).max(1),
-  deliverySplitSeller: z.number().min(0).max(1),
-  minWithdrawalAmount: z.number().min(0),
-});
+const settingsSchema = z
+  .object({
+    pricePerKm: z.number().min(0),
+    pricePerMinute: z.number().min(0),
+    baseFee: z.number().min(0),
+    minimumCharge: z.number().min(0),
+    peakHourSurchargePercent: z.number().min(0).max(300),
+    nightSurchargePercent: z.number().min(0).max(300),
+    paymentProcessingFeePercent: z.number().min(0).max(30),
+    smartRoundingStep: z.number().min(1).max(500),
+    peakHourStart: z.number().min(0).max(23),
+    peakHourEnd: z.number().min(0).max(23),
+    nightHourStart: z.number().min(0).max(23),
+    nightHourEnd: z.number().min(0).max(23),
+    commissionType: z.enum(["percentage", "fixed"]),
+    commissionValue: z.number().min(0),
+    deliveryCommissionPercent: z.number().min(0).max(100, "Max 100%"),
+    deliveryRevenuePlatformPercent: z.number().min(0).max(100),
+    deliveryRevenueDriverPercent: z.number().min(0).max(100),
+    deliveryRevenueSellerPercent: z.number().min(0).max(100),
+    serviceSubscriptionFee: z.number().min(0),
+    deliverySplitClient: z.number().min(0).max(1),
+    deliverySplitSeller: z.number().min(0).max(1),
+    returnDeliverySplitWassla: z.number().min(0).max(1),
+    returnDeliverySplitSeller: z.number().min(0).max(1),
+    minWithdrawalAmount: z.number().min(0),
+    driverAssignmentTimeoutSeconds: z.number().min(30).max(3600),
+  })
+  .refine(
+    (v) =>
+      Math.abs(
+        v.deliveryRevenuePlatformPercent +
+          v.deliveryRevenueDriverPercent +
+          v.deliveryRevenueSellerPercent -
+          100,
+      ) < 0.2,
+    {
+      message: "La répartition revenus livraison doit égaler 100%.",
+      path: ["deliveryRevenueDriverPercent"],
+    },
+  )
+  .refine(
+    (v) => Math.abs(v.deliverySplitClient + v.deliverySplitSeller - 1) < 0.01,
+    {
+      message:
+        "La répartition coût livraison (client/vendeur) doit égaler 100%.",
+      path: ["deliverySplitSeller"],
+    },
+  )
+  .refine(
+    (v) =>
+      Math.abs(v.returnDeliverySplitWassla + v.returnDeliverySplitSeller - 1) <
+      0.01,
+    {
+      message: "La répartition retour (WASSLA/vendeur) doit égaler 100%.",
+      path: ["returnDeliverySplitSeller"],
+    },
+  );
 
 type SettingsForm = z.infer<typeof settingsSchema>;
 
@@ -54,7 +103,8 @@ export default function SettingsPage() {
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["platform-settings"],
-    queryFn: () => apiGet<PlatformSettings>("/admin/settings"),
+    queryFn: () => apiGet<{ settings: PlatformSettings }>("/admin/settings"),
+    select: (d) => d.settings,
   });
 
   const {
@@ -68,13 +118,37 @@ export default function SettingsPage() {
     resolver: zodResolver(settingsSchema),
     values: settings
       ? {
+          pricePerKm: settings.pricePerKm,
+          pricePerMinute: settings.pricePerMinute,
+          baseFee: settings.baseFee,
+          minimumCharge: settings.minimumCharge,
+          peakHourSurchargePercent: settings.peakHourSurchargePercent,
+          nightSurchargePercent: settings.nightSurchargePercent,
+          paymentProcessingFeePercent: settings.paymentProcessingFeePercent,
+          smartRoundingStep: settings.smartRoundingStep,
+          peakHourStart: settings.peakHourStart,
+          peakHourEnd: settings.peakHourEnd,
+          nightHourStart: settings.nightHourStart,
+          nightHourEnd: settings.nightHourEnd,
           commissionType: settings.commissionType,
           commissionValue: settings.commissionValue,
           deliveryCommissionPercent: settings.deliveryCommissionPercent,
+          deliveryRevenuePlatformPercent:
+            settings.deliveryRevenuePlatformPercent ??
+            settings.deliveryCommissionPercent ??
+            8.7,
+          deliveryRevenueDriverPercent:
+            settings.deliveryRevenueDriverPercent ?? 91.3,
+          deliveryRevenueSellerPercent:
+            settings.deliveryRevenueSellerPercent ?? 0,
           serviceSubscriptionFee: settings.serviceSubscriptionFee,
           deliverySplitClient: settings.deliverySplitClient,
           deliverySplitSeller: settings.deliverySplitSeller,
+          returnDeliverySplitWassla: settings.returnDeliverySplitWassla ?? 0.5,
+          returnDeliverySplitSeller: settings.returnDeliverySplitSeller ?? 0.5,
           minWithdrawalAmount: settings.minWithdrawalAmount,
+          driverAssignmentTimeoutSeconds:
+            settings.driverAssignmentTimeoutSeconds ?? 300,
         }
       : undefined,
   });
@@ -82,12 +156,15 @@ export default function SettingsPage() {
   const commissionType = watch("commissionType");
   const commissionValue = watch("commissionValue");
   const splitClient = watch("deliverySplitClient");
+  const revenuePlatform = watch("deliveryRevenuePlatformPercent");
+  const revenueDriver = watch("deliveryRevenueDriverPercent");
+  const revenueSeller = watch("deliveryRevenueSellerPercent");
 
   const updateMutation = useMutation({
     mutationFn: (data: SettingsForm) =>
-      apiPatch<PlatformSettings>("/admin/settings", data),
+      apiPatch<{ settings: PlatformSettings }>("/admin/settings", data),
     onSuccess: (data) => {
-      queryClient.setQueryData(["platform-settings"], data);
+      queryClient.setQueryData(["platform-settings"], data.settings);
       setIsDirty(false);
       toast.success("Paramètres mis à jour avec succès");
     },
@@ -103,13 +180,37 @@ export default function SettingsPage() {
   const handleReset = () => {
     if (settings) {
       reset({
+        pricePerKm: settings.pricePerKm,
+        pricePerMinute: settings.pricePerMinute,
+        baseFee: settings.baseFee,
+        minimumCharge: settings.minimumCharge,
+        peakHourSurchargePercent: settings.peakHourSurchargePercent,
+        nightSurchargePercent: settings.nightSurchargePercent,
+        paymentProcessingFeePercent: settings.paymentProcessingFeePercent,
+        smartRoundingStep: settings.smartRoundingStep,
+        peakHourStart: settings.peakHourStart,
+        peakHourEnd: settings.peakHourEnd,
+        nightHourStart: settings.nightHourStart,
+        nightHourEnd: settings.nightHourEnd,
         commissionType: settings.commissionType,
         commissionValue: settings.commissionValue,
         deliveryCommissionPercent: settings.deliveryCommissionPercent,
+        deliveryRevenuePlatformPercent:
+          settings.deliveryRevenuePlatformPercent ??
+          settings.deliveryCommissionPercent ??
+          8.7,
+        deliveryRevenueDriverPercent:
+          settings.deliveryRevenueDriverPercent ?? 91.3,
+        deliveryRevenueSellerPercent:
+          settings.deliveryRevenueSellerPercent ?? 0,
         serviceSubscriptionFee: settings.serviceSubscriptionFee,
         deliverySplitClient: settings.deliverySplitClient,
         deliverySplitSeller: settings.deliverySplitSeller,
+        returnDeliverySplitWassla: settings.returnDeliverySplitWassla ?? 0.5,
+        returnDeliverySplitSeller: settings.returnDeliverySplitSeller ?? 0.5,
         minWithdrawalAmount: settings.minWithdrawalAmount,
+        driverAssignmentTimeoutSeconds:
+          settings.driverAssignmentTimeoutSeconds ?? 300,
       });
       setIsDirty(false);
     }
@@ -174,6 +275,210 @@ export default function SettingsPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} onChange={() => setIsDirty(true)}>
         <div className="grid gap-6 md:grid-cols-2">
+          {/* Delivery Pricing Model */}
+          <Card className="border-0 shadow-md md:col-span-2">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
+                  <Truck className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[#0D1B2A]">
+                    Tarification livraison (modèle mixte)
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Formule: (distance × prix/km) + (durée × prix/min) + base
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-4">
+                <div>
+                  <Label
+                    htmlFor="pricePerKm"
+                    className="text-sm text-slate-600">
+                    Prix par km (DA)
+                  </Label>
+                  <Input
+                    id="pricePerKm"
+                    type="number"
+                    step="1"
+                    className="mt-1.5 h-11"
+                    {...register("pricePerKm", { valueAsNumber: true })}
+                  />
+                </div>
+                <div>
+                  <Label
+                    htmlFor="pricePerMinute"
+                    className="text-sm text-slate-600">
+                    Prix par minute (DA)
+                  </Label>
+                  <Input
+                    id="pricePerMinute"
+                    type="number"
+                    step="1"
+                    className="mt-1.5 h-11"
+                    {...register("pricePerMinute", { valueAsNumber: true })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="baseFee" className="text-sm text-slate-600">
+                    Frais de base (DA)
+                  </Label>
+                  <Input
+                    id="baseFee"
+                    type="number"
+                    step="1"
+                    className="mt-1.5 h-11"
+                    {...register("baseFee", { valueAsNumber: true })}
+                  />
+                </div>
+                <div>
+                  <Label
+                    htmlFor="minimumCharge"
+                    className="text-sm text-slate-600">
+                    Minimum facturé (DA)
+                  </Label>
+                  <Input
+                    id="minimumCharge"
+                    type="number"
+                    step="1"
+                    className="mt-1.5 h-11"
+                    {...register("minimumCharge", { valueAsNumber: true })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-4">
+                <div>
+                  <Label
+                    htmlFor="peakHourSurchargePercent"
+                    className="text-sm text-slate-600">
+                    Maj. heures de pointe (%)
+                  </Label>
+                  <Input
+                    id="peakHourSurchargePercent"
+                    type="number"
+                    step="1"
+                    className="mt-1.5 h-11"
+                    {...register("peakHourSurchargePercent", {
+                      valueAsNumber: true,
+                    })}
+                  />
+                </div>
+                <div>
+                  <Label
+                    htmlFor="nightSurchargePercent"
+                    className="text-sm text-slate-600">
+                    Maj. nuit (%)
+                  </Label>
+                  <Input
+                    id="nightSurchargePercent"
+                    type="number"
+                    step="1"
+                    className="mt-1.5 h-11"
+                    {...register("nightSurchargePercent", {
+                      valueAsNumber: true,
+                    })}
+                  />
+                </div>
+                <div>
+                  <Label
+                    htmlFor="paymentProcessingFeePercent"
+                    className="text-sm text-slate-600">
+                    Frais paiement (%)
+                  </Label>
+                  <Input
+                    id="paymentProcessingFeePercent"
+                    type="number"
+                    step="0.1"
+                    className="mt-1.5 h-11"
+                    {...register("paymentProcessingFeePercent", {
+                      valueAsNumber: true,
+                    })}
+                  />
+                </div>
+                <div>
+                  <Label
+                    htmlFor="smartRoundingStep"
+                    className="text-sm text-slate-600">
+                    Arrondi intelligent (step)
+                  </Label>
+                  <Input
+                    id="smartRoundingStep"
+                    type="number"
+                    step="1"
+                    className="mt-1.5 h-11"
+                    {...register("smartRoundingStep", { valueAsNumber: true })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-4">
+                <div>
+                  <Label
+                    htmlFor="peakHourStart"
+                    className="text-sm text-slate-600">
+                    Début pointe (h)
+                  </Label>
+                  <Input
+                    id="peakHourStart"
+                    type="number"
+                    min="0"
+                    max="23"
+                    className="mt-1.5 h-11"
+                    {...register("peakHourStart", { valueAsNumber: true })}
+                  />
+                </div>
+                <div>
+                  <Label
+                    htmlFor="peakHourEnd"
+                    className="text-sm text-slate-600">
+                    Fin pointe (h)
+                  </Label>
+                  <Input
+                    id="peakHourEnd"
+                    type="number"
+                    min="0"
+                    max="23"
+                    className="mt-1.5 h-11"
+                    {...register("peakHourEnd", { valueAsNumber: true })}
+                  />
+                </div>
+                <div>
+                  <Label
+                    htmlFor="nightHourStart"
+                    className="text-sm text-slate-600">
+                    Début nuit (h)
+                  </Label>
+                  <Input
+                    id="nightHourStart"
+                    type="number"
+                    min="0"
+                    max="23"
+                    className="mt-1.5 h-11"
+                    {...register("nightHourStart", { valueAsNumber: true })}
+                  />
+                </div>
+                <div>
+                  <Label
+                    htmlFor="nightHourEnd"
+                    className="text-sm text-slate-600">
+                    Fin nuit (h)
+                  </Label>
+                  <Input
+                    id="nightHourEnd"
+                    type="number"
+                    min="0"
+                    max="23"
+                    className="mt-1.5 h-11"
+                    {...register("nightHourEnd", { valueAsNumber: true })}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Commission Type + Value */}
           <Card className="border-0 shadow-md md:col-span-2">
             <CardContent className="p-6">
@@ -198,15 +503,12 @@ export default function SettingsPage() {
                     onValueChange={(v) => {
                       setValue("commissionType", v as "fixed" | "percentage");
                       setIsDirty(true);
-                    }}
-                  >
+                    }}>
                     <SelectTrigger className="mt-1.5 h-11">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="fixed">
-                        Montant fixe (DA)
-                      </SelectItem>
+                      <SelectItem value="fixed">Montant fixe (DA)</SelectItem>
                       <SelectItem value="percentage">
                         Pourcentage (%)
                       </SelectItem>
@@ -216,9 +518,10 @@ export default function SettingsPage() {
                 <div>
                   <Label
                     htmlFor="commissionValue"
-                    className="text-sm text-slate-600"
-                  >
-                    {commissionType === "percentage" ? "Pourcentage" : "Montant"}
+                    className="text-sm text-slate-600">
+                    {commissionType === "percentage"
+                      ? "Pourcentage"
+                      : "Montant"}
                   </Label>
                   <div className="relative mt-1.5">
                     <Input
@@ -271,7 +574,9 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="deliveryCommissionPercent" className="text-sm text-slate-600">
+                <Label
+                  htmlFor="deliveryCommissionPercent"
+                  className="text-sm text-slate-600">
                   Pourcentage (%)
                 </Label>
                 <div className="relative mt-1.5">
@@ -280,7 +585,9 @@ export default function SettingsPage() {
                     type="number"
                     step="0.1"
                     className="pr-8 h-11"
-                    {...register("deliveryCommissionPercent", { valueAsNumber: true })}
+                    {...register("deliveryCommissionPercent", {
+                      valueAsNumber: true,
+                    })}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400">
                     %
@@ -294,8 +601,139 @@ export default function SettingsPage() {
               </div>
               <div className="mt-3 rounded-lg bg-slate-50 p-3">
                 <p className="text-xs text-slate-500">
-                  <strong>Actuel :</strong> {settings?.deliveryCommissionPercent ?? 8.7}%
+                  <strong>Actuel :</strong>{" "}
+                  {settings?.deliveryCommissionPercent ?? 8.7}%
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Delivery Revenue Split */}
+          <Card className="border-0 shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
+                  <Percent className="h-5 w-5 text-emerald-700" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[#0D1B2A]">
+                    Répartition revenus livraison
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Plateforme + Driver + Vendeur = 100%
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label
+                    htmlFor="deliveryRevenuePlatformPercent"
+                    className="text-sm text-slate-600">
+                    Plateforme (%)
+                  </Label>
+                  <Input
+                    id="deliveryRevenuePlatformPercent"
+                    type="number"
+                    step="0.1"
+                    className="mt-1.5 h-11"
+                    {...register("deliveryRevenuePlatformPercent", {
+                      valueAsNumber: true,
+                      onChange: (e) => {
+                        const v = Number.parseFloat(e.target.value);
+                        const seller = Number(
+                          watch("deliveryRevenueSellerPercent") || 0,
+                        );
+                        if (!Number.isNaN(v)) {
+                          const driver = Math.max(0, 100 - v - seller);
+                          setValue(
+                            "deliveryRevenueDriverPercent",
+                            Math.round(driver * 10) / 10,
+                          );
+                        }
+                      },
+                    })}
+                  />
+                </div>
+
+                <div>
+                  <Label
+                    htmlFor="deliveryRevenueDriverPercent"
+                    className="text-sm text-slate-600">
+                    Driver (%)
+                  </Label>
+                  <Input
+                    id="deliveryRevenueDriverPercent"
+                    type="number"
+                    step="0.1"
+                    className="mt-1.5 h-11 bg-slate-50"
+                    readOnly
+                    {...register("deliveryRevenueDriverPercent", {
+                      valueAsNumber: true,
+                    })}
+                  />
+                </div>
+
+                <div>
+                  <Label
+                    htmlFor="deliveryRevenueSellerPercent"
+                    className="text-sm text-slate-600">
+                    Vendeur (%)
+                  </Label>
+                  <Input
+                    id="deliveryRevenueSellerPercent"
+                    type="number"
+                    step="0.1"
+                    className="mt-1.5 h-11"
+                    {...register("deliveryRevenueSellerPercent", {
+                      valueAsNumber: true,
+                      onChange: (e) => {
+                        const v = Number.parseFloat(e.target.value);
+                        const platform = Number(
+                          watch("deliveryRevenuePlatformPercent") || 0,
+                        );
+                        if (!Number.isNaN(v)) {
+                          const driver = Math.max(0, 100 - platform - v);
+                          setValue(
+                            "deliveryRevenueDriverPercent",
+                            Math.round(driver * 10) / 10,
+                          );
+                        }
+                      },
+                    })}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-lg bg-slate-50 p-3">
+                <p className="text-xs text-slate-500">
+                  Somme actuelle:{" "}
+                  <strong>
+                    {(
+                      (revenuePlatform || 0) +
+                      (revenueDriver || 0) +
+                      (revenueSeller || 0)
+                    ).toFixed(1)}
+                    %
+                  </strong>
+                </p>
+              </div>
+
+              <div className="mt-4">
+                <Label
+                  htmlFor="driverAssignmentTimeoutSeconds"
+                  className="text-sm text-slate-600">
+                  Timeout assignation driver (secondes)
+                </Label>
+                <Input
+                  id="driverAssignmentTimeoutSeconds"
+                  type="number"
+                  step="10"
+                  className="mt-1.5 h-11"
+                  {...register("driverAssignmentTimeoutSeconds", {
+                    valueAsNumber: true,
+                  })}
+                />
               </div>
             </CardContent>
           </Card>
@@ -318,7 +756,9 @@ export default function SettingsPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="deliverySplitClient" className="text-sm text-slate-600">
+                  <Label
+                    htmlFor="deliverySplitClient"
+                    className="text-sm text-slate-600">
                     Client (%)
                   </Label>
                   <div className="relative mt-1.5">
@@ -333,14 +773,20 @@ export default function SettingsPage() {
                         valueAsNumber: true,
                         onChange: (e) => {
                           const v = parseFloat(e.target.value);
-                          if (!isNaN(v)) setValue("deliverySplitSeller", Math.round((1 - v) * 100) / 100);
+                          if (!isNaN(v))
+                            setValue(
+                              "deliverySplitSeller",
+                              Math.round((1 - v) * 100) / 100,
+                            );
                         },
                       })}
                     />
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="deliverySplitSeller" className="text-sm text-slate-600">
+                  <Label
+                    htmlFor="deliverySplitSeller"
+                    className="text-sm text-slate-600">
                     Vendeur (%)
                   </Label>
                   <div className="relative mt-1.5">
@@ -352,16 +798,22 @@ export default function SettingsPage() {
                       max="1"
                       className="h-11 bg-slate-50"
                       readOnly
-                      {...register("deliverySplitSeller", { valueAsNumber: true })}
+                      {...register("deliverySplitSeller", {
+                        valueAsNumber: true,
+                      })}
                     />
                   </div>
                 </div>
               </div>
               <div className="mt-3 rounded-lg bg-slate-50 p-3">
                 <p className="text-xs text-slate-500">
-                  Client paie <strong>{Math.round((splitClient || 0.5) * 100)}%</strong>, vendeur
-                  paie <strong>{Math.round((1 - (splitClient || 0.5)) * 100)}%</strong> du coût de
-                  livraison
+                  Client paie{" "}
+                  <strong>{Math.round((splitClient || 0.5) * 100)}%</strong>,
+                  vendeur paie{" "}
+                  <strong>
+                    {Math.round((1 - (splitClient || 0.5)) * 100)}%
+                  </strong>{" "}
+                  du coût de livraison
                 </p>
               </div>
             </CardContent>
@@ -384,7 +836,9 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="serviceSubscriptionFee" className="text-sm text-slate-600">
+                <Label
+                  htmlFor="serviceSubscriptionFee"
+                  className="text-sm text-slate-600">
                   Montant mensuel (DA)
                 </Label>
                 <div className="relative mt-1.5">
@@ -393,7 +847,9 @@ export default function SettingsPage() {
                     type="number"
                     step="1"
                     className="pr-12 h-11"
-                    {...register("serviceSubscriptionFee", { valueAsNumber: true })}
+                    {...register("serviceSubscriptionFee", {
+                      valueAsNumber: true,
+                    })}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400">
                     DA
@@ -407,7 +863,8 @@ export default function SettingsPage() {
               </div>
               <div className="mt-3 rounded-lg bg-slate-50 p-3">
                 <p className="text-xs text-slate-500">
-                  <strong>Actuel :</strong> {formatDA(settings?.serviceSubscriptionFee ?? 800)} / mois
+                  <strong>Actuel :</strong>{" "}
+                  {formatDA(settings?.serviceSubscriptionFee ?? 800)} / mois
                 </p>
               </div>
             </CardContent>
@@ -430,7 +887,9 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="minWithdrawalAmount" className="text-sm text-slate-600">
+                <Label
+                  htmlFor="minWithdrawalAmount"
+                  className="text-sm text-slate-600">
                   Montant minimum (DA)
                 </Label>
                 <div className="relative mt-1.5">
@@ -439,7 +898,9 @@ export default function SettingsPage() {
                     type="number"
                     step="100"
                     className="pr-12 h-11"
-                    {...register("minWithdrawalAmount", { valueAsNumber: true })}
+                    {...register("minWithdrawalAmount", {
+                      valueAsNumber: true,
+                    })}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400">
                     DA
@@ -453,7 +914,8 @@ export default function SettingsPage() {
               </div>
               <div className="mt-3 rounded-lg bg-slate-50 p-3">
                 <p className="text-xs text-slate-500">
-                  <strong>Actuel :</strong> {formatDA(settings?.minWithdrawalAmount ?? 1000)}
+                  <strong>Actuel :</strong>{" "}
+                  {formatDA(settings?.minWithdrawalAmount ?? 1000)}
                 </p>
               </div>
             </CardContent>
@@ -468,8 +930,7 @@ export default function SettingsPage() {
               type="button"
               variant="outline"
               onClick={handleReset}
-              className="gap-2"
-            >
+              className="gap-2">
               <RotateCcw className="h-4 w-4" />
               Annuler
             </Button>
@@ -477,8 +938,7 @@ export default function SettingsPage() {
           <Button
             type="submit"
             disabled={!isDirty || updateMutation.isPending}
-            className="gap-2 bg-[#FF6B00] hover:bg-[#E05E00]"
-          >
+            className="gap-2 bg-[#FF6B00] hover:bg-[#E05E00]">
             {updateMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

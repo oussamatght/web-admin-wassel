@@ -18,8 +18,10 @@ import { Search, Bell, User, LogOut } from "lucide-react";
 const pathLabels: Record<string, string> = {
   dashboard: "Tableau de bord",
   users: "Utilisateurs",
+  drivers: "Livreurs",
   products: "Produits",
   orders: "Commandes",
+  "live-orders": "Suivi en direct",
   disputes: "Litiges",
   services: "Services",
   financials: "Finances",

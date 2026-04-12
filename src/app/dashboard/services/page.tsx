@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import {
-  formatDate,
   getServiceCategoryLabel,
   getServiceCategoryColor,
   getSubscriptionStatusLabel,
@@ -14,25 +14,10 @@ import { DataTable, type Column } from "@/components/common/DataTable";
 import { Pagination } from "@/components/common/Pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Wrench,
-  Eye,
-  MapPin,
-  Clock,
-  Star,
-  User,
-  CalendarDays,
-  ImageIcon,
-} from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { Service, ServiceCategory } from "@/types";
+import { Wrench, Eye, Search, Route } from "lucide-react";
+import type { Service } from "@/types";
 
 const CATEGORY_TABS: { value: string; label: string }[] = [
   { value: "", label: "Tous" },
@@ -48,16 +33,18 @@ interface ServicesResponse {
 }
 
 export default function ServicesPage() {
+  const router = useRouter();
   const [category, setCategory] = useState("");
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<Service | null>(null);
+  const [search, setSearch] = useState("");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-services", category, page],
+    queryKey: ["admin-services", category, page, search],
     queryFn: () =>
       apiGet<ServicesResponse>("/services", {
         params: {
           category: category || undefined,
+          search: search.trim() || undefined,
           page,
           limit: 20,
         },
@@ -69,16 +56,17 @@ export default function ServicesPage() {
       key: "title",
       header: "Titre",
       cell: (s) => (
-        <span className="font-medium text-slate-900">
-          {s.title || "Sans titre"}
-        </span>
+        <div>
+          <p className="text-sm font-medium text-slate-900">
+            {s.title || "Sans titre"}
+          </p>
+          <p className="text-xs text-slate-400">
+            {s.provider
+              ? `${s.provider.firstName} ${s.provider.lastName}`
+              : "—"}
+          </p>
+        </div>
       ),
-    },
-    {
-      key: "provider",
-      header: "Prestataire",
-      cell: (s) =>
-        s.provider ? `${s.provider.firstName} ${s.provider.lastName}` : "—",
     },
     {
       key: "category",
@@ -111,21 +99,6 @@ export default function ServicesPage() {
       ),
     },
     {
-      key: "rating",
-      header: "Note",
-      cell: (s) => (
-        <div className="flex items-center gap-1">
-          <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-          <span className="text-sm">
-            {s.rating?.average?.toFixed(1) ?? "—"}
-          </span>
-          <span className="text-xs text-slate-400">
-            ({s.rating?.count ?? 0})
-          </span>
-        </div>
-      ),
-    },
-    {
       key: "isActive",
       header: "Statut",
       cell: (s) => (
@@ -133,8 +106,8 @@ export default function ServicesPage() {
           variant="outline"
           className={
             s.isActive
-              ? "bg-green-100 text-green-700 border-green-200"
-              : "bg-gray-100 text-gray-500 border-gray-200"
+              ? "border-green-200 bg-green-50 text-green-700"
+              : "border-gray-200 bg-gray-50 text-gray-600"
           }>
           {s.isActive ? "Actif" : "Inactif"}
         </Badge>
@@ -144,9 +117,11 @@ export default function ServicesPage() {
       key: "actions",
       header: "",
       cell: (s) => (
-        <Button variant="ghost" size="sm" onClick={() => setSelected(s)}>
-          <Eye className="mr-1 h-4 w-4" />
-          Détails
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push(`/dashboard/services/${s._id}`)}>
+          <Eye className="mr-1 h-4 w-4" /> Détails
         </Button>
       ),
     },
@@ -157,20 +132,33 @@ export default function ServicesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-          <Wrench className="h-5 w-5 text-blue-600" />
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
+            <Wrench className="h-5 w-5 text-blue-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Services</h1>
+            <p className="text-sm text-slate-500">
+              {pagination?.total ?? 0} services enregistrés
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Services</h1>
-          <p className="text-sm text-slate-500">
-            {pagination?.total ?? 0} services enregistrés
-          </p>
+
+        <div className="relative w-full max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            className="pl-9"
+            placeholder="Rechercher un service"
+          />
         </div>
       </div>
 
-      {/* Category tabs */}
       <div className="flex flex-wrap gap-2">
         {CATEGORY_TABS.map((tab) => (
           <button
@@ -182,17 +170,22 @@ export default function ServicesPage() {
             className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               category === tab.value
                 ? "bg-[#FF6B00] text-white"
-                : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
             }`}>
             {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Table */}
-      <DataTable columns={columns} data={services} isLoading={isLoading} />
+      <DataTable
+        columns={columns}
+        data={services}
+        isLoading={isLoading}
+        emptyMessage="Aucun service trouvé"
+        emptyIcon={Route}
+        onRowClick={(s) => router.push(`/dashboard/services/${s._id}`)}
+      />
 
-      {/* Pagination */}
       {pagination && pagination.pages > 1 && (
         <Pagination
           page={pagination.page}
@@ -202,168 +195,6 @@ export default function ServicesPage() {
           onPageChange={setPage}
         />
       )}
-
-      {/* Detail Dialog */}
-      <Dialog
-        open={!!selected}
-        onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Wrench className="h-5 w-5 text-blue-500" />
-              {selected?.title || "Détails du service"}
-            </DialogTitle>
-          </DialogHeader>
-
-          {selected && (
-            <div className="space-y-5">
-              {/* Provider */}
-              <div className="flex items-center gap-3 rounded-lg border p-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-sm font-bold text-purple-700">
-                  {selected.provider?.firstName?.[0]}
-                  {selected.provider?.lastName?.[0]}
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900">
-                    {selected.provider?.firstName} {selected.provider?.lastName}
-                  </p>
-                  <p className="text-xs text-slate-500">Prestataire</p>
-                </div>
-              </div>
-
-              {/* Info grid */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-medium text-slate-500">
-                    Catégorie
-                  </p>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "mt-1 border",
-                      getServiceCategoryColor(selected.category),
-                    )}>
-                    {getServiceCategoryLabel(selected.category)}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-slate-500">
-                    Abonnement
-                  </p>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "mt-1 border",
-                      getSubscriptionStatusColor(
-                        selected.subscription?.status ?? "expired",
-                      ),
-                    )}>
-                    {getSubscriptionStatusLabel(
-                      selected.subscription?.status ?? "expired",
-                    )}
-                  </Badge>
-                </div>
-                <div className="flex items-start gap-2">
-                  <MapPin className="mt-0.5 h-4 w-4 text-slate-400" />
-                  <div>
-                    <p className="text-xs font-medium text-slate-500">
-                      Adresse
-                    </p>
-                    <p className="text-sm text-slate-700">
-                      {selected.address}
-                      {selected.commune && `, ${selected.commune}`}
-                      {selected.wilaya && `, ${selected.wilaya}`}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Clock className="mt-0.5 h-4 w-4 text-slate-400" />
-                  <div>
-                    <p className="text-xs font-medium text-slate-500">
-                      Horaires
-                    </p>
-                    <p className="text-sm text-slate-700">
-                      {selected.workingHours?.start} -{" "}
-                      {selected.workingHours?.end}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CalendarDays className="mt-0.5 h-4 w-4 text-slate-400" />
-                  <div>
-                    <p className="text-xs font-medium text-slate-500">Jours</p>
-                    <p className="text-sm text-slate-700">
-                      {selected.workingDays?.join(", ") ?? "—"}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Star className="mt-0.5 h-4 w-4 text-yellow-400" />
-                  <div>
-                    <p className="text-xs font-medium text-slate-500">Note</p>
-                    <p className="text-sm text-slate-700">
-                      {selected.rating?.average?.toFixed(1) ?? "—"} (
-                      {selected.rating?.count ?? 0} avis)
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Description */}
-              {selected.description && (
-                <div>
-                  <p className="text-xs font-medium text-slate-500">
-                    Description
-                  </p>
-                  <p className="mt-1 text-sm text-slate-700">
-                    {selected.description}
-                  </p>
-                </div>
-              )}
-
-              {/* Subscription dates */}
-              {selected.subscription?.startDate && (
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <p className="text-xs font-medium text-slate-500 mb-1">
-                    Période d&apos;abonnement
-                  </p>
-                  <p className="text-sm text-slate-700">
-                    {formatDate(selected.subscription.startDate)}
-                    {selected.subscription.endDate &&
-                      ` → ${formatDate(selected.subscription.endDate)}`}
-                  </p>
-                </div>
-              )}
-
-              {/* Images */}
-              {selected.images && selected.images.length > 0 && (
-                <div>
-                  <p className="mb-2 flex items-center gap-1 text-xs font-medium text-slate-500">
-                    <ImageIcon className="h-3.5 w-3.5" />
-                    Photos ({selected.images.length})
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {selected.images.map((img, i) => (
-                      <a
-                        key={i}
-                        href={img.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="overflow-hidden rounded-lg border">
-                        <img
-                          src={img.url}
-                          alt={`Service ${i + 1}`}
-                          className="h-24 w-full object-cover"
-                        />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

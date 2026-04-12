@@ -64,10 +64,15 @@ export function getOrderStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     pending: 'En attente',
     confirmed: 'Confirmée',
+    rejected: 'Rejetée',
     preparing: 'En préparation',
     ready_for_pickup: 'Prête à enlever',
+    driver_selected: 'Livreur assigné',
+    picked_up: 'Récupérée',
     in_delivery: 'En livraison',
+    arrived: 'Arrivée',
     delivered: 'Livrée',
+    completed: 'Terminée',
     cancelled: 'Annulée',
     returned: 'Retournée',
   }
@@ -78,10 +83,15 @@ export function getOrderStatusColor(status: string): string {
   const colors: Record<string, string> = {
     pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
     confirmed: 'bg-blue-100 text-blue-700 border-blue-200',
+    rejected: 'bg-rose-100 text-rose-700 border-rose-200',
     preparing: 'bg-purple-100 text-purple-700 border-purple-200',
     ready_for_pickup: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+    driver_selected: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+    picked_up: 'bg-violet-100 text-violet-700 border-violet-200',
     in_delivery: 'bg-orange-100 text-orange-700 border-orange-200',
+    arrived: 'bg-teal-100 text-teal-700 border-teal-200',
     delivered: 'bg-green-100 text-green-700 border-green-200',
+    completed: 'bg-emerald-100 text-emerald-700 border-emerald-200',
     cancelled: 'bg-red-100 text-red-700 border-red-200',
     returned: 'bg-gray-100 text-gray-700 border-gray-200',
   }

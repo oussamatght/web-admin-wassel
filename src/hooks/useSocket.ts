@@ -13,7 +13,10 @@ export function useSocketEvent<T = unknown>(
   handler: (data: T) => void
 ) {
   const savedHandler = useRef(handler);
-  savedHandler.current = handler;
+
+  useEffect(() => {
+    savedHandler.current = handler;
+  }, [handler]);
 
   useEffect(() => {
     const socket = getSocket();

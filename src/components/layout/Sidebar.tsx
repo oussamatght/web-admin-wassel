@@ -12,10 +12,12 @@ import { WasslaLogo } from "@/components/common/WasslaLogo";
 import {
   LayoutDashboard,
   Users,
+  Truck,
   Package,
   ShoppingCart,
   AlertTriangle,
   Wrench,
+  Route,
   DollarSign,
   Tag,
   Bell,
@@ -52,6 +54,11 @@ const navGroups: NavGroup[] = [
         badgeKey: "pendingUsers",
       },
       {
+        href: "/dashboard/drivers",
+        icon: Truck,
+        label: "Livreurs",
+      },
+      {
         href: "/dashboard/products",
         icon: Package,
         label: "Produits",
@@ -62,6 +69,11 @@ const navGroups: NavGroup[] = [
         icon: ShoppingCart,
         label: "Commandes",
         badgeKey: "pendingOrders",
+      },
+      {
+        href: "/dashboard/live-orders",
+        icon: Route,
+        label: "Suivi en direct",
       },
       {
         href: "/dashboard/disputes",

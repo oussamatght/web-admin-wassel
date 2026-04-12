@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { WasslaLogo } from "@/components/common/WasslaLogo";
 import {
   Mail,
   Lock,
@@ -55,9 +54,9 @@ export default function LoginPage() {
       ),
     onSuccess: (data) => {
       login(data.user, data.accessToken, data.refreshToken);
-      document.cookie = `accessToken=${data.accessToken}; path=/; max-age=${60 * 60 * 24 * 7}`;
+      document.cookie = `accessToken=${data.accessToken}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`;
       toast.success("Connexion reussie");
-      router.push("/dashboard");
+      router.replace("/dashboard");
     },
     onError: (err: unknown) => {
       const axiosErr = err as { response?: { status?: number } };

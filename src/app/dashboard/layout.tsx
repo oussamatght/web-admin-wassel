@@ -13,12 +13,18 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  //const router = useRouter();
+  const router = useRouter();
   const { isLoading, isAuthenticated, loadFromStorage } = useAuthStore();
 
   useEffect(() => {
     loadFromStorage();
   }, [loadFromStorage]);
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [isLoading, isAuthenticated, router]);
 
   if (isLoading) {
     return (
@@ -31,10 +37,9 @@ export default function DashboardLayout({
     );
   }
 
-  //   if (!isAuthenticated) {
-  //     router.push("/login");
-  //     return null;
-  //   }
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0D1B2A]">

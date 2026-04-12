@@ -3,16 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
-import {
-  formatDA,
-  formatDate,
-  formatDateTime,
-  getOrderStatusLabel,
-  getOrderStatusColor,
-  getPaymentMethodLabel,
-  getPaymentStatusLabel,
-  getPaymentStatusColor,
-} from "@/lib/utils";
+import { formatDA, formatDateTime, getPaymentMethodLabel } from "@/lib/utils";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +23,8 @@ import {
   QrCode,
   FileText,
   ShoppingBag,
+  Route,
+  ExternalLink,
 } from "lucide-react";
 import type { Order, OrderStatus } from "@/types";
 
@@ -44,8 +37,12 @@ const TIMELINE_STEPS: {
   { status: "confirmed", label: "Confirmée", icon: Check },
   { status: "preparing", label: "En préparation", icon: Package },
   { status: "ready_for_pickup", label: "Prête à enlever", icon: QrCode },
+  { status: "driver_selected", label: "Livreur assigné", icon: Truck },
+  { status: "picked_up", label: "Récupérée", icon: Package },
   { status: "in_delivery", label: "En livraison", icon: Truck },
+  { status: "arrived", label: "Arrivée client", icon: MapPin },
   { status: "delivered", label: "Livrée", icon: Check },
+  { status: "completed", label: "Terminée", icon: Check },
 ];
 
 const STATUS_ORDER: OrderStatus[] = [
@@ -53,9 +50,27 @@ const STATUS_ORDER: OrderStatus[] = [
   "confirmed",
   "preparing",
   "ready_for_pickup",
+  "driver_selected",
+  "picked_up",
   "in_delivery",
+  "arrived",
   "delivered",
+  "completed",
 ];
+
+function buildMapsLink(
+  lat?: number,
+  lng?: number,
+  address?: string,
+): string | null {
+  if (typeof lat === "number" && typeof lng === "number") {
+    return `https://www.google.com/maps?q=${lat},${lng}`;
+  }
+  if (address) {
+    return `https://www.google.com/maps?q=${encodeURIComponent(address)}`;
+  }
+  return null;
+}
 
 function getStepIndex(status: OrderStatus): number {
   const idx = STATUS_ORDER.indexOf(status);
@@ -97,6 +112,86 @@ export default function OrderDetailPage() {
   const isCancelled = order.status === "cancelled";
   const isReturned = order.status === "returned";
   const currentStepIdx = getStepIndex(order.status);
+  const showTrackingCard = [
+    "confirmed",
+    "preparing",
+    "ready_for_pickup",
+    "driver_selected",
+    "picked_up",
+    "in_delivery",
+    "arrived",
+    "delivered",
+    "completed",
+  ].includes(order.status);
+
+  const sellerAddress =
+    order.sellerLocation?.address || order.seller?.wilaya || "";
+  const clientAddress =
+    [order.deliveryAddress?.address, order.deliveryAddress?.wilaya]
+      .filter(Boolean)
+      .join(", ") || "";
+
+  const sellerMaps = buildMapsLink(
+    order.sellerLocation?.lat,
+    order.sellerLocation?.lng,
+    sellerAddress,
+  );
+  const driverMaps = buildMapsLink(
+    order.driverLocation?.lat,
+    order.driverLocation?.lng,
+    order.driverLocation?.address,
+  );
+  const clientMaps = buildMapsLink(
+    order.deliveryAddress?.lat,
+    order.deliveryAddress?.lng,
+    clientAddress,
+  );
+
+  const liveState = (() => {
+    switch (order.status) {
+      case "confirmed":
+      case "preparing":
+      case "ready_for_pickup":
+        return {
+          title: "Chez le vendeur",
+          hint: "Commande en préparation/retrait",
+          icon: Store,
+        };
+      case "driver_selected":
+        return {
+          title: "Livreur vers vendeur",
+          hint: "Le livreur se dirige vers le point de retrait",
+          icon: Truck,
+        };
+      case "picked_up":
+      case "in_delivery":
+        return {
+          title: "En route client",
+          hint: "Commande transportée vers l'adresse client",
+          icon: Route,
+        };
+      case "arrived":
+        return {
+          title: "Arrivée client",
+          hint: "Le livreur est sur le point de livraison",
+          icon: MapPin,
+        };
+      case "delivered":
+      case "completed":
+        return {
+          title: "Livraison terminée",
+          hint: "Commande remise au client",
+          icon: Check,
+        };
+      default:
+        return {
+          title: "Hors suivi",
+          hint: "Aucune position active",
+          icon: Route,
+        };
+    }
+  })();
+  const LiveStateIcon = liveState.icon;
 
   return (
     <div className="space-y-6">
@@ -112,11 +207,16 @@ export default function OrderDetailPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[#0D1B2A] font-mono">
-            #{order.orderNumber}
+            {order.orderCode ?? order.orderNumber}
           </h1>
           <p className="text-sm text-slate-500">
             Créée {formatDateTime(order.createdAt)}
           </p>
+          {order.orderCode && (
+            <p className="text-xs text-slate-400">
+              Référence interne: #{order.orderNumber}
+            </p>
+          )}
         </div>
         <StatusBadge status={order.status} type="order" size="md" />
       </div>
@@ -199,6 +299,79 @@ export default function OrderDetailPage() {
             </Card>
           )}
 
+          {showTrackingCard && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Où est la commande maintenant ?
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2 rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-700">
+                  <LiveStateIcon className="h-4 w-4" />
+                  <div>
+                    <p className="font-medium">{liveState.title}</p>
+                    <p className="text-xs text-orange-600">{liveState.hint}</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-slate-500">Point vendeur</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-slate-700">
+                      {sellerAddress || "—"}
+                    </p>
+                    {sellerMaps && (
+                      <a
+                        href={sellerMaps}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-xs text-[#FF6B00] hover:underline">
+                        Voir sur map <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-slate-500">Position livreur</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-slate-700">
+                      {order.driverLocation?.address ||
+                        (order.driverLocation?.lat != null &&
+                        order.driverLocation?.lng != null
+                          ? `${order.driverLocation.lat.toFixed(5)}, ${order.driverLocation.lng.toFixed(5)}`
+                          : "Non disponible")}
+                    </p>
+                    {driverMaps && (
+                      <a
+                        href={driverMaps}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-xs text-[#FF6B00] hover:underline">
+                        Voir sur map <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-slate-500">Destination client</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-slate-700">
+                      {clientAddress || "—"}
+                    </p>
+                    {clientMaps && (
+                      <a
+                        href={clientMaps}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-xs text-[#FF6B00] hover:underline">
+                        Voir sur map <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* QR Code */}
           {order.status === "ready_for_pickup" && order.qrCode && (
             <Card>
@@ -261,10 +434,15 @@ export default function OrderDetailPage() {
                           {item.quantity}
                         </td>
                         <td className="py-3 pr-4 text-right text-slate-600">
-                          {formatDA(item.unitPrice)}
+                          {formatDA(item.unitPrice ?? item.price ?? 0)}
                         </td>
                         <td className="py-3 text-right font-medium text-[#0D1B2A]">
-                          {formatDA(item.total)}
+                          {formatDA(
+                            item.total ??
+                              item.subtotal ??
+                              (item.price ?? item.unitPrice ?? 0) *
+                                (item.quantity ?? 1),
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -400,7 +578,9 @@ export default function OrderDetailPage() {
               )}
               <FinRow
                 label="Commission plateforme"
-                value={formatDA(order.platformCommission)}
+                value={formatDA(
+                  order.commission ?? order.platformCommission ?? 0,
+                )}
               />
               <Separator />
               <div className="flex items-center justify-between font-bold text-[#0D1B2A]">

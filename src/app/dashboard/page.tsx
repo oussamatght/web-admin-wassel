@@ -63,6 +63,22 @@ const STATUS_COLORS: Record<string, string> = {
   returned: "#6B7280",
 };
 
+const STATUS_DOT_CLASSES: Record<string, string> = {
+  pending: "bg-yellow-500",
+  confirmed: "bg-blue-500",
+  rejected: "bg-rose-500",
+  preparing: "bg-purple-500",
+  ready_for_pickup: "bg-cyan-500",
+  driver_selected: "bg-indigo-500",
+  picked_up: "bg-violet-500",
+  in_delivery: "bg-orange-500",
+  arrived: "bg-teal-500",
+  delivered: "bg-green-500",
+  completed: "bg-emerald-500",
+  cancelled: "bg-red-500",
+  returned: "bg-gray-500",
+};
+
 interface LiveEvent {
   icon: string;
   text: string;
@@ -86,7 +102,8 @@ export default function DashboardPage() {
 
   const { data: settings } = useQuery({
     queryKey: ["platform-settings"],
-    queryFn: () => apiGet<PlatformSettings>("/admin/settings"),
+    queryFn: () => apiGet<{ settings: PlatformSettings }>("/admin/settings"),
+    select: (d) => d.settings,
   });
 
   const { data: paymentStatus } = useQuery({
@@ -204,9 +221,11 @@ export default function DashboardPage() {
   const donutData =
     Object.keys(orderStatusMap).length > 0
       ? Object.entries(orderStatusMap).map(([name, value]) => ({
+          key: name,
           name: getOrderStatusLabel(name),
           value,
           color: STATUS_COLORS[name] ?? "#6B7280",
+          dotClass: STATUS_DOT_CLASSES[name] ?? "bg-slate-400",
         }))
       : [];
   const totalDonut = donutData.reduce((s, d) => s + d.value, 0);
@@ -218,7 +237,7 @@ export default function DashboardPage() {
       header: "N\u00B0",
       cell: (r) => (
         <span className="font-mono text-sm font-bold text-[#FF6B00]">
-          #{r.orderNumber}
+          #{r.orderCode ?? r.orderNumber}
         </span>
       ),
       width: "100px",
@@ -534,10 +553,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 gap-2 mt-2">
                 {donutData.map((d) => (
                   <div key={d.name} className="flex items-center gap-2 text-xs">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: d.color }}
-                    />
+                    <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${d.dotClass}`} />
                     <span className="text-slate-600 truncate">{d.name}</span>
                     <span className="ml-auto font-bold text-slate-700">
                       {d.value}

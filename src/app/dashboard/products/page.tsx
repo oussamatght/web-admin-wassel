@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiGet, apiPatch } from "@/lib/api";
@@ -68,6 +69,7 @@ interface ProductsResponse {
 }
 
 export default function ProductsPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const [filters, setFilters] = useState({
@@ -262,6 +264,11 @@ export default function ProductsPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => router.push("/dashboard/products/" + p._id)}>
+              <Eye className="mr-2 h-4 w-4" /> Voir détails
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             {p.isApproved && (
               <DropdownMenuItem
                 className="text-red-600"
@@ -270,7 +277,9 @@ export default function ProductsPage() {
                     open: true,
                     title: "Rejeter ce produit ?",
                     description:
-                      '"' + p.title + '" ne sera plus visible par les acheteurs.',
+                      '"' +
+                      p.title +
+                      '" ne sera plus visible par les acheteurs.',
                     variant: "danger",
                     onConfirm: async () => {
                       await approvalMutation.mutateAsync({
@@ -412,6 +421,7 @@ export default function ProductsPage() {
         isLoading={isLoading}
         emptyMessage="Aucun produit trouvé"
         emptyIcon={Package}
+        onRowClick={(p) => router.push("/dashboard/products/" + p._id)}
       />
 
       {/* Pagination */}

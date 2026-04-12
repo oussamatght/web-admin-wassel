@@ -26,6 +26,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: (user, accessToken, refreshToken) => {
     localStorage.setItem('accessToken', accessToken)
     localStorage.setItem('refreshToken', refreshToken)
+    document.cookie = `accessToken=${accessToken}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`
     set({ user, accessToken, isAuthenticated: true })
     connectSocket(accessToken)
   },
@@ -34,6 +35,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
     document.cookie = 'accessToken=; path=/; max-age=0'
+    document.cookie = 'refreshToken=; path=/; max-age=0'
     set({ user: null, accessToken: null, isAuthenticated: false })
     disconnectSocket()
   },
@@ -62,6 +64,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ isLoading: false })
         return
       }
+      document.cookie = `accessToken=${token}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`
       set({ user: data, accessToken: token, isAuthenticated: true })
       connectSocket(token)
     } catch {

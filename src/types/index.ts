@@ -4,9 +4,22 @@
 
 export type Role = 'client' | 'seller' | 'driver' | 'prestataire' | 'admin'
 export type AccountStatus = 'active' | 'suspended' | 'banned' | 'pending_verification'
-export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready_for_pickup' | 'in_delivery' | 'delivered' | 'cancelled' | 'returned'
-export type PaymentMethod = 'cash_on_delivery' | 'online'
-export type PaymentStatus = 'pending' | 'paid' | 'failed'
+export type OrderStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'rejected'
+  | 'preparing'
+  | 'ready_for_pickup'
+  | 'driver_selected'
+  | 'picked_up'
+  | 'in_delivery'
+  | 'arrived'
+  | 'delivered'
+  | 'completed'
+  | 'cancelled'
+  | 'returned'
+export type PaymentMethod = 'cash_on_delivery' | 'online' | 'edahabia' | 'cib'
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded'
 export type DisputeReason = 'defective' | 'incompatible' | 'wrong_item' | 'not_as_described' | 'not_received' | 'other'
 export type DisputeStatus = 'open' | 'under_review' | 'resolved_refund' | 'resolved_no_refund' | 'escalated' | 'closed'
 export type ServiceCategory = 'mecanicien' | 'tolier' | 'scanner_auto' | 'lavage'
@@ -74,13 +87,16 @@ export interface Product {
 export interface OrderItem {
   product: ProductSummary
   quantity: number
-  unitPrice: number
-  total: number
+  unitPrice?: number
+  total?: number
+  price?: number
+  subtotal?: number
 }
 
 export interface Order {
   _id: string
   orderNumber: string
+  orderCode?: string
   client: UserSummary
   seller: UserSummary
   driver?: UserSummary
@@ -88,12 +104,20 @@ export interface Order {
   totalAmount: number
   subtotal: number
   deliveryCost: number
-  platformCommission: number
+  platformCommission?: number
+  commission?: number
   discount: number
   status: OrderStatus
   paymentMethod: PaymentMethod
+  gatewayMethod?: 'edahabia' | 'cib'
   paymentStatus: PaymentStatus
   deliveryAddress: { wilaya: string; address: string; lat: number; lng: number }
+  pickupAddress?: string
+  distanceKm?: number
+  durationMin?: number
+  sellerLocation?: { address?: string; lat?: number; lng?: number; updatedAt?: string }
+  driverLocation?: { address?: string; lat?: number; lng?: number; updatedAt?: string }
+  clientLocation?: { address?: string; lat?: number; lng?: number; updatedAt?: string }
   qrCode?: string
   notes?: string
   cancelReason?: string
@@ -187,13 +211,34 @@ export interface Notification {
 export interface PlatformSettings {
   _id: string
   key: string
+  // Mixed delivery pricing model
+  pricePerKm: number
+  pricePerMinute: number
+  baseFee: number
+  minimumCharge: number
+  peakHourSurchargePercent: number
+  nightSurchargePercent: number
+  paymentProcessingFeePercent: number
+  smartRoundingStep: number
+  peakHourStart: number
+  peakHourEnd: number
+  nightHourStart: number
+  nightHourEnd: number
+
+  // Commission and distribution
   commissionType: 'percentage' | 'fixed'
   commissionValue: number
   deliveryCommissionPercent: number
+  deliveryRevenuePlatformPercent: number
+  deliveryRevenueDriverPercent: number
+  deliveryRevenueSellerPercent: number
   serviceSubscriptionFee: number
   deliverySplitClient: number
   deliverySplitSeller: number
+  returnDeliverySplitWassla: number
+  returnDeliverySplitSeller: number
   minWithdrawalAmount: number
+  driverAssignmentTimeoutSeconds: number
   // Legacy
   sellerCommission: number
   driverCommissionPercent: number
