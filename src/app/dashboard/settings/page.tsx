@@ -159,6 +159,25 @@ export default function SettingsPage() {
   const revenuePlatform = watch("deliveryRevenuePlatformPercent");
   const revenueDriver = watch("deliveryRevenueDriverPercent");
   const revenueSeller = watch("deliveryRevenueSellerPercent");
+  const previewPricePerKm = watch("pricePerKm");
+  const previewPricePerMinute = watch("pricePerMinute");
+  const previewBaseFee = watch("baseFee");
+  const previewMinimumCharge = watch("minimumCharge");
+  const previewExampleKm = 8;
+  const previewExampleMin = 20;
+  const previewDistanceCost =
+    Math.max(0, Number(previewPricePerKm || 0)) * previewExampleKm;
+  const previewTimeCost =
+    Math.max(0, Number(previewPricePerMinute || 0)) * previewExampleMin;
+  const previewSubtotal =
+    Math.max(0, Number(previewBaseFee || 0)) +
+    previewDistanceCost +
+    previewTimeCost;
+  const previewApplied = Math.max(
+    previewSubtotal,
+    Math.max(0, Number(previewMinimumCharge || 0)),
+  );
+  const previewRounded = Math.ceil(previewApplied / 50) * 50;
 
   const updateMutation = useMutation({
     mutationFn: (data: SettingsForm) =>
@@ -474,6 +493,44 @@ export default function SettingsPage() {
                     className="mt-1.5 h-11"
                     {...register("nightHourEnd", { valueAsNumber: true })}
                   />
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+                <p className="mb-2 text-sm font-semibold text-orange-800">
+                  📊 Exemple: {previewExampleKm} km, {previewExampleMin} min
+                </p>
+                <div className="space-y-1 text-sm text-orange-700">
+                  <div className="flex justify-between">
+                    <span>Base fee:</span>
+                    <span>
+                      {Math.round(Math.max(0, Number(previewBaseFee || 0)))} DA
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>
+                      Distance ({previewExampleKm} km ×{" "}
+                      {Math.round(Math.max(0, Number(previewPricePerKm || 0)))}{" "}
+                      DA):
+                    </span>
+                    <span>{Math.round(previewDistanceCost)} DA</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>
+                      Temps ({previewExampleMin} min ×{" "}
+                      {Math.round(
+                        Math.max(0, Number(previewPricePerMinute || 0)),
+                      )}{" "}
+                      DA):
+                    </span>
+                    <span>{Math.round(previewTimeCost)} DA</span>
+                  </div>
+                  <div className="flex justify-between border-t border-orange-300 pt-1 font-bold">
+                    <span>Total arrondi:</span>
+                    <span className="text-orange-600">
+                      {Math.round(previewRounded)} DA
+                    </span>
+                  </div>
                 </div>
               </div>
             </CardContent>
