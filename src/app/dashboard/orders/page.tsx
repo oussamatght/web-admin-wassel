@@ -54,7 +54,9 @@ interface OrdersResponse {
     page: number;
     limit: number;
     total: number;
-    pages: number;
+    pages?: number;
+    totalPages?: number;
+    hasNextPage?: boolean;
   };
 }
 
@@ -108,6 +110,7 @@ export default function OrdersPage() {
 
   const orders = data?.orders ?? [];
   const pagination = data?.pagination;
+  const totalPages = pagination?.totalPages ?? pagination?.pages ?? 1;
 
   // Socket real-time updates
   useEffect(() => {
@@ -414,10 +417,10 @@ export default function OrdersPage() {
       />
 
       {/* Pagination */}
-      {pagination && pagination.pages > 1 && (
+      {pagination && totalPages > 1 && (
         <Pagination
           page={pagination.page}
-          totalPages={pagination.pages}
+          totalPages={totalPages}
           total={pagination.total}
           limit={pagination.limit}
           onPageChange={setPage}

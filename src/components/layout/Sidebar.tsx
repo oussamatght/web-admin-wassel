@@ -18,18 +18,20 @@ import {
   AlertTriangle,
   Wrench,
   Route,
+  ShieldAlert,
   DollarSign,
   Tag,
   Bell,
   LogOut,
   Settings,
+  UserCheck,
 } from "lucide-react";
 
 interface NavItem {
   href: string;
-  icon: React.ElementType;
   label: string;
   badgeKey?: string;
+  icon: React.ComponentType<{ className?: string }>;
 }
 
 interface NavGroup {
@@ -59,6 +61,11 @@ const navGroups: NavGroup[] = [
         label: "Livreurs",
       },
       {
+        href: "/dashboard/prestataires",
+        icon: UserCheck,
+        label: "Prestataires",
+      },
+      {
         href: "/dashboard/products",
         icon: Package,
         label: "Produits",
@@ -74,6 +81,16 @@ const navGroups: NavGroup[] = [
         href: "/dashboard/live-orders",
         icon: Route,
         label: "Suivi en direct",
+      },
+      {
+        href: "/dashboard/live-map",
+        icon: Route,
+        label: "Live map",
+      },
+      {
+        href: "/dashboard/fraud-alerts",
+        icon: ShieldAlert,
+        label: "Fraud detection",
       },
       {
         href: "/dashboard/disputes",

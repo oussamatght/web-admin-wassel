@@ -3,7 +3,13 @@
 // ═══════════════════════════════════════════
 
 export type Role = 'client' | 'seller' | 'driver' | 'prestataire' | 'admin'
-export type AccountStatus = 'active' | 'suspended' | 'banned' | 'pending_verification'
+export type AccountStatus =
+  | 'active'
+  | 'suspended'
+  | 'banned'
+  | 'pending_verification'
+  | 'pending_subscription'
+  | 'subscription_expired'
 export type OrderStatus =
   | 'pending'
   | 'confirmed'
@@ -60,6 +66,16 @@ export interface User {
   commerceRegister?: string
   isVerified: boolean
   fcmToken?: string
+  subscriptionStatus?: 'none' | 'pending_payment' | 'active' | 'expired'
+  subscriptionExpiresAt?: string | null
+  subscriptionRequestedAt?: string | null
+  subscriptionApprovedAt?: string | null
+  subscriptionPaymentProof?: string | null
+  subscriptionAmount?: number
+  isSubscriptionActive?: boolean
+  serviceType?: 'mechanic' | 'bodywork' | 'scanner' | 'carwash' | 'other' | null
+  serviceDescription?: string
+  servicePrice?: number
   documents?: { type: string; url: string; publicId: string }[]
   createdAt: string
 }

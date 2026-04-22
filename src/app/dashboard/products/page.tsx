@@ -64,7 +64,9 @@ interface ProductsResponse {
     page: number;
     limit: number;
     total: number;
-    pages: number;
+    pages?: number;
+    totalPages?: number;
+    hasNextPage?: boolean;
   };
 }
 
@@ -117,6 +119,7 @@ export default function ProductsPage() {
 
   const products = data?.products ?? [];
   const pagination = data?.pagination;
+  const totalPages = pagination?.totalPages ?? pagination?.pages ?? 1;
 
   const approvalMutation = useMutation({
     mutationFn: ({ id, isApproved }: { id: string; isApproved: boolean }) =>
@@ -131,7 +134,7 @@ export default function ProductsPage() {
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      apiPatch("/admin/products/" + id + "/toggle-status", { isActive }),
+      apiPatch("/admin/products/" + id + "/toggle", { isActive }),
     onSuccess: () => {
       toast.success("Statut mis à jour");
       queryClient.invalidateQueries({ queryKey: ["admin-products"] });
@@ -425,10 +428,10 @@ export default function ProductsPage() {
       />
 
       {/* Pagination */}
-      {pagination && pagination.pages > 1 && (
+      {pagination && totalPages > 1 && (
         <Pagination
           page={pagination.page}
-          totalPages={pagination.pages}
+          totalPages={totalPages}
           total={pagination.total}
           limit={pagination.limit}
           onPageChange={(p) => setFilters((prev) => ({ ...prev, page: p }))}
