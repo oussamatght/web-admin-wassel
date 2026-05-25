@@ -91,6 +91,7 @@ export interface Product {
   wilaya: string
   images: { url: string; publicId: string }[]
   vehicleTypes: VehicleType[]
+  compatibilityVins?: string[]
   compatibleVINs: string[]
   engineCodes: string[]
   manufacturerRef?: string
@@ -223,6 +224,26 @@ export interface Notification {
   data?: Record<string, unknown>
   createdAt: string
 }
+
+export type CustomerTotal = number & { readonly __moneyBrand: 'CustomerTotal' }
+export type DriverPayout = number & { readonly __moneyBrand: 'DriverPayout' }
+export type PlatformCommission = number & { readonly __moneyBrand: 'PlatformCommission' }
+export type PaymentFee = number & { readonly __moneyBrand: 'PaymentFee' }
+
+export const Money = {
+  customerTotal(value: number): CustomerTotal {
+    return value as CustomerTotal
+  },
+  driverPayout(value: number): DriverPayout {
+    return value as DriverPayout
+  },
+  platformCommission(value: number): PlatformCommission {
+    return value as PlatformCommission
+  },
+  paymentFee(value: number): PaymentFee {
+    return value as PaymentFee
+  },
+} as const
 
 export interface PlatformSettings {
   _id: string

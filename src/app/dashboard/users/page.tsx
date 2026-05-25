@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { apiGet, apiPatch } from "@/lib/api";
+import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   formatDA,
@@ -145,7 +145,7 @@ export default function UsersPage() {
   });
 
   const verifyMutation = useMutation({
-    mutationFn: (id: string) => apiPatch("/admin/users/" + id + "/verify"),
+    mutationFn: (id: string) => apiPost("/admin/users/" + id + "/verify", { action: "verify" }),
     onSuccess: () => {
       toast.success("Utilisateur vérifié");
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });

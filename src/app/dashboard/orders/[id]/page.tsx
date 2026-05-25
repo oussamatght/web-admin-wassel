@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import { useParams, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { apiGet } from "@/lib/api";
-import { formatDA, formatDateTime, getPaymentMethodLabel } from "@/lib/utils";
-import { StatusBadge } from "@/components/common/StatusBadge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { useParams, useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { apiGet } from '@/lib/api';
+import { formatDA, formatDateTime, getPaymentMethodLabel } from '@/lib/utils';
+import { StatusBadge } from '@/components/common/StatusBadge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import {
   ArrowLeft,
   Check,
@@ -25,45 +25,41 @@ import {
   ShoppingBag,
   Route,
   ExternalLink,
-} from "lucide-react";
-import type { Order, OrderStatus } from "@/types";
+} from 'lucide-react';
+import type { Order, OrderStatus } from '@/types';
 
 const TIMELINE_STEPS: {
   status: OrderStatus;
   label: string;
   icon: React.ElementType;
 }[] = [
-  { status: "pending", label: "En attente", icon: Clock },
-  { status: "confirmed", label: "Confirmée", icon: Check },
-  { status: "preparing", label: "En préparation", icon: Package },
-  { status: "ready_for_pickup", label: "Prête à enlever", icon: QrCode },
-  { status: "driver_selected", label: "Livreur assigné", icon: Truck },
-  { status: "picked_up", label: "Récupérée", icon: Package },
-  { status: "in_delivery", label: "En livraison", icon: Truck },
-  { status: "arrived", label: "Arrivée client", icon: MapPin },
-  { status: "delivered", label: "Livrée", icon: Check },
-  { status: "completed", label: "Terminée", icon: Check },
+  { status: 'pending', label: 'En attente', icon: Clock },
+  { status: 'confirmed', label: 'Confirmée', icon: Check },
+  { status: 'preparing', label: 'En préparation', icon: Package },
+  { status: 'ready_for_pickup', label: 'Prête à enlever', icon: QrCode },
+  { status: 'driver_selected', label: 'Livreur assigné', icon: Truck },
+  { status: 'picked_up', label: 'Récupérée', icon: Package },
+  { status: 'in_delivery', label: 'En livraison', icon: Truck },
+  { status: 'arrived', label: 'Arrivée client', icon: MapPin },
+  { status: 'delivered', label: 'Livrée', icon: Check },
+  { status: 'completed', label: 'Terminée', icon: Check },
 ];
 
 const STATUS_ORDER: OrderStatus[] = [
-  "pending",
-  "confirmed",
-  "preparing",
-  "ready_for_pickup",
-  "driver_selected",
-  "picked_up",
-  "in_delivery",
-  "arrived",
-  "delivered",
-  "completed",
+  'pending',
+  'confirmed',
+  'preparing',
+  'ready_for_pickup',
+  'driver_selected',
+  'picked_up',
+  'in_delivery',
+  'arrived',
+  'delivered',
+  'completed',
 ];
 
-function buildMapsLink(
-  lat?: number,
-  lng?: number,
-  address?: string,
-): string | null {
-  if (typeof lat === "number" && typeof lng === "number") {
+function buildMapsLink(lat?: number, lng?: number, address?: string): string | null {
+  if (typeof lat === 'number' && typeof lng === 'number') {
     return `https://www.google.com/maps?q=${lat},${lng}`;
   }
   if (address) {
@@ -83,8 +79,8 @@ export default function OrderDetailPage() {
   const id = params.id as string;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["order-detail", id],
-    queryFn: () => apiGet<{ order: Order }>("/orders/" + id),
+    queryKey: ['order-detail', id],
+    queryFn: () => apiGet<{ order: Order }>('/orders/' + id),
     enabled: !!id,
   });
 
@@ -109,84 +105,82 @@ export default function OrderDetailPage() {
     );
   }
 
-  const isCancelled = order.status === "cancelled";
-  const isReturned = order.status === "returned";
+  const isCancelled = order.status === 'cancelled';
+  const isReturned = order.status === 'returned';
   const currentStepIdx = getStepIndex(order.status);
   const showTrackingCard = [
-    "confirmed",
-    "preparing",
-    "ready_for_pickup",
-    "driver_selected",
-    "picked_up",
-    "in_delivery",
-    "arrived",
-    "delivered",
-    "completed",
+    'confirmed',
+    'preparing',
+    'ready_for_pickup',
+    'driver_selected',
+    'picked_up',
+    'in_delivery',
+    'arrived',
+    'delivered',
+    'completed',
   ].includes(order.status);
 
-  const sellerAddress =
-    order.sellerLocation?.address || order.seller?.wilaya || "";
+  const sellerAddress = order.sellerLocation?.address || order.seller?.wilaya || '';
   const clientAddress =
-    [order.deliveryAddress?.address, order.deliveryAddress?.wilaya]
-      .filter(Boolean)
-      .join(", ") || "";
+    [order.deliveryAddress?.address, order.deliveryAddress?.wilaya].filter(Boolean).join(', ') ||
+    '';
 
   const sellerMaps = buildMapsLink(
     order.sellerLocation?.lat,
     order.sellerLocation?.lng,
-    sellerAddress,
+    sellerAddress
   );
   const driverMaps = buildMapsLink(
     order.driverLocation?.lat,
     order.driverLocation?.lng,
-    order.driverLocation?.address,
+    order.driverLocation?.address
   );
   const clientMaps = buildMapsLink(
     order.deliveryAddress?.lat,
     order.deliveryAddress?.lng,
-    clientAddress,
+    clientAddress
   );
 
   const liveState = (() => {
     switch (order.status) {
-      case "confirmed":
-      case "preparing":
-      case "ready_for_pickup":
+      case 'confirmed':
+      case 'preparing':
+      case 'ready_for_pickup':
         return {
-          title: "Chez le vendeur",
-          hint: "Commande en préparation/retrait",
+          title: 'Chez le vendeur',
+          hint: 'Commande en préparation/retrait',
           icon: Store,
         };
-      case "driver_selected":
+      case 'driver_selected':
         return {
-          title: "Livreur vers vendeur",
-          hint: "Le livreur se dirige vers le point de retrait",
+          title: 'Livreur vers vendeur',
+          hint: 'Le livreur se dirige vers le point de retrait',
           icon: Truck,
         };
-      case "picked_up":
-      case "in_delivery":
+      case 'picked_up':
+      case 'in_delivery':
         return {
-          title: "En route client",
+          title: 'En route client',
           hint: "Commande transportée vers l'adresse client",
           icon: Route,
         };
-      case "arrived":
+      case 'arrived':
         return {
-          title: "Arrivée client",
-          hint: "Le livreur est sur le point de livraison",
+          title: 'Arrivée client',
+          hint: 'Le livreur est sur le point de livraison',
           icon: MapPin,
         };
-      case "delivered":
-      case "completed":
+      case 'delivered':
+      case 'completed':
         return {
-          title: "Livraison terminée",
-          hint: "Commande remise au client",
+          title: 'Livraison terminée',
+          hint: 'Commande remise au client',
           icon: Check,
         };
       default:
         return {
-          title: "Hors suivi",
-          hint: "Aucune position active",
+          title: 'Hors suivi',
+          hint: 'Aucune position active',
           icon: Route,
         };
     }
@@ -196,10 +190,7 @@ export default function OrderDetailPage() {
   return (
     <div className="space-y-6">
       {/* Back */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => router.push("/dashboard/orders")}>
+      <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/orders')}>
         <ArrowLeft className="mr-2 h-4 w-4" /> Commandes
       </Button>
 
@@ -209,13 +200,9 @@ export default function OrderDetailPage() {
           <h1 className="text-2xl font-bold text-[#0D1B2A] font-mono">
             {order.orderCode ?? order.orderNumber}
           </h1>
-          <p className="text-sm text-slate-500">
-            Créée {formatDateTime(order.createdAt)}
-          </p>
+          <p className="text-sm text-slate-500">Créée {formatDateTime(order.createdAt)}</p>
           {order.orderCode && (
-            <p className="text-xs text-slate-400">
-              Référence interne: #{order.orderNumber}
-            </p>
+            <p className="text-xs text-slate-400">Référence interne: #{order.orderNumber}</p>
           )}
         </div>
         <StatusBadge status={order.status} type="order" size="md" />
@@ -226,8 +213,8 @@ export default function OrderDetailPage() {
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-4 pb-4">
             <p className="text-sm font-medium text-red-700">
-              {isCancelled ? "Commande annulée" : "Commande retournée"}
-              {order.cancelReason && " — Raison : " + order.cancelReason}
+              {isCancelled ? 'Commande annulée' : 'Commande retournée'}
+              {order.cancelReason && ' — Raison : ' + order.cancelReason}
             </p>
           </CardContent>
         </Card>
@@ -240,9 +227,7 @@ export default function OrderDetailPage() {
           {!isCancelled && !isReturned && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">
-                  Suivi de la commande
-                </CardTitle>
+                <CardTitle className="text-base">Suivi de la commande</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
@@ -250,45 +235,39 @@ export default function OrderDetailPage() {
                     const isCompleted = idx <= currentStepIdx;
                     const isCurrent = idx === currentStepIdx;
                     return (
-                      <div
-                        key={step.status}
-                        className="flex flex-col items-center flex-1">
+                      <div key={step.status} className="flex flex-col items-center flex-1">
                         <div className="flex items-center w-full">
                           {idx > 0 && (
                             <div
                               className={`h-0.5 flex-1 ${
-                                idx <= currentStepIdx
-                                  ? "bg-[#FF6B00]"
-                                  : "bg-slate-200"
+                                idx <= currentStepIdx ? 'bg-[#FF6B00]' : 'bg-slate-200'
                               }`}
                             />
                           )}
                           <div
                             className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${
                               isCurrent
-                                ? "border-[#FF6B00] bg-[#FF6B00] text-white scale-110"
+                                ? 'border-[#FF6B00] bg-[#FF6B00] text-white scale-110'
                                 : isCompleted
-                                  ? "border-[#FF6B00] bg-[#FF6B00] text-white"
-                                  : "border-slate-200 bg-white text-slate-400"
-                            }`}>
+                                  ? 'border-[#FF6B00] bg-[#FF6B00] text-white'
+                                  : 'border-slate-200 bg-white text-slate-400'
+                            }`}
+                          >
                             <step.icon className="h-4 w-4" />
                           </div>
                           {idx < TIMELINE_STEPS.length - 1 && (
                             <div
                               className={`h-0.5 flex-1 ${
-                                idx < currentStepIdx
-                                  ? "bg-[#FF6B00]"
-                                  : "bg-slate-200"
+                                idx < currentStepIdx ? 'bg-[#FF6B00]' : 'bg-slate-200'
                               }`}
                             />
                           )}
                         </div>
                         <span
                           className={`mt-2 text-xs text-center ${
-                            isCompleted
-                              ? "text-[#FF6B00] font-medium"
-                              : "text-slate-400"
-                          }`}>
+                            isCompleted ? 'text-[#FF6B00] font-medium' : 'text-slate-400'
+                          }`}
+                        >
                           {step.label}
                         </span>
                       </div>
@@ -302,9 +281,7 @@ export default function OrderDetailPage() {
           {showTrackingCard && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">
-                  Où est la commande maintenant ?
-                </CardTitle>
+                <CardTitle className="text-base">Où est la commande maintenant ?</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-2 rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-700">
@@ -319,14 +296,15 @@ export default function OrderDetailPage() {
                   <div className="rounded-lg border p-3">
                     <p className="text-xs text-slate-500">Point vendeur</p>
                     <p className="mt-1 line-clamp-2 text-sm text-slate-700">
-                      {sellerAddress || "—"}
+                      {sellerAddress || '—'}
                     </p>
                     {sellerMaps && (
                       <a
                         href={sellerMaps}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-2 inline-flex items-center gap-1 text-xs text-[#FF6B00] hover:underline">
+                        className="mt-2 inline-flex items-center gap-1 text-xs text-[#FF6B00] hover:underline"
+                      >
                         Voir sur map <ExternalLink className="h-3 w-3" />
                       </a>
                     )}
@@ -336,17 +314,17 @@ export default function OrderDetailPage() {
                     <p className="text-xs text-slate-500">Position livreur</p>
                     <p className="mt-1 line-clamp-2 text-sm text-slate-700">
                       {order.driverLocation?.address ||
-                        (order.driverLocation?.lat != null &&
-                        order.driverLocation?.lng != null
+                        (order.driverLocation?.lat != null && order.driverLocation?.lng != null
                           ? `${order.driverLocation.lat.toFixed(5)}, ${order.driverLocation.lng.toFixed(5)}`
-                          : "Non disponible")}
+                          : 'Non disponible')}
                     </p>
                     {driverMaps && (
                       <a
                         href={driverMaps}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-2 inline-flex items-center gap-1 text-xs text-[#FF6B00] hover:underline">
+                        className="mt-2 inline-flex items-center gap-1 text-xs text-[#FF6B00] hover:underline"
+                      >
                         Voir sur map <ExternalLink className="h-3 w-3" />
                       </a>
                     )}
@@ -355,14 +333,15 @@ export default function OrderDetailPage() {
                   <div className="rounded-lg border p-3">
                     <p className="text-xs text-slate-500">Destination client</p>
                     <p className="mt-1 line-clamp-2 text-sm text-slate-700">
-                      {clientAddress || "—"}
+                      {clientAddress || '—'}
                     </p>
                     {clientMaps && (
                       <a
                         href={clientMaps}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-2 inline-flex items-center gap-1 text-xs text-[#FF6B00] hover:underline">
+                        className="mt-2 inline-flex items-center gap-1 text-xs text-[#FF6B00] hover:underline"
+                      >
                         Voir sur map <ExternalLink className="h-3 w-3" />
                       </a>
                     )}
@@ -373,7 +352,7 @@ export default function OrderDetailPage() {
           )}
 
           {/* QR Code */}
-          {order.status === "ready_for_pickup" && order.qrCode && (
+          {order.status === 'ready_for_pickup' && order.qrCode && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
@@ -394,8 +373,7 @@ export default function OrderDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <ShoppingBag className="h-4 w-4" /> Articles (
-                {order.items?.length ?? 0})
+                <ShoppingBag className="h-4 w-4" /> Articles ({order.items?.length ?? 0})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -426,13 +404,11 @@ export default function OrderDetailPage() {
                               </div>
                             )}
                             <span className="font-medium text-[#0D1B2A]">
-                              {item.product?.title ?? "Produit supprimé"}
+                              {item.product?.title ?? 'Produit supprimé'}
                             </span>
                           </div>
                         </td>
-                        <td className="py-3 pr-4 text-center text-slate-600">
-                          {item.quantity}
-                        </td>
+                        <td className="py-3 pr-4 text-center text-slate-600">{item.quantity}</td>
                         <td className="py-3 pr-4 text-right text-slate-600">
                           {formatDA(item.unitPrice ?? item.price ?? 0)}
                         </td>
@@ -440,8 +416,7 @@ export default function OrderDetailPage() {
                           {formatDA(
                             item.total ??
                               item.subtotal ??
-                              (item.price ?? item.unitPrice ?? 0) *
-                                (item.quantity ?? 1),
+                              (item.price ?? item.unitPrice ?? 0) * (item.quantity ?? 1)
                           )}
                         </td>
                       </tr>
@@ -489,8 +464,7 @@ export default function OrderDetailPage() {
               )}
               {order.deliveryAddress && (
                 <p className="text-slate-500">
-                  {order.deliveryAddress.address},{" "}
-                  {order.deliveryAddress.wilaya}
+                  {order.deliveryAddress.address}, {order.deliveryAddress.wilaya}
                 </p>
               )}
             </CardContent>
@@ -543,17 +517,11 @@ export default function OrderDetailPage() {
             <CardContent className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Méthode</span>
-                <Badge variant="outline">
-                  {getPaymentMethodLabel(order.paymentMethod)}
-                </Badge>
+                <Badge variant="outline">{getPaymentMethodLabel(order.paymentMethod)}</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Statut</span>
-                <StatusBadge
-                  status={order.paymentStatus}
-                  type="payment"
-                  size="sm"
-                />
+                <StatusBadge status={order.paymentStatus} type="payment" size="sm" />
               </div>
             </CardContent>
           </Card>
@@ -562,32 +530,23 @@ export default function OrderDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-[#FF6B00]" /> Détails
-                financiers
+                <DollarSign className="h-4 w-4 text-[#FF6B00]" /> Détails financiers
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <FinRow label="Sous-total" value={formatDA(order.subtotal)} />
-              <FinRow label="Livraison" value={formatDA(order.deliveryCost)} />
+              <FinRow label="Items Subtotal" value={formatDA(order.subtotal)} />
+              <FinRow label="Delivery Fee" value={formatDA(order.deliveryCost)} />
               {order.discount > 0 && (
-                <FinRow
-                  label="Réduction"
-                  value={"- " + formatDA(order.discount)}
-                  discount
-                />
+                <FinRow label="Réduction" value={'- ' + formatDA(order.discount)} discount />
               )}
               <FinRow
-                label="Commission plateforme"
-                value={formatDA(
-                  order.commission ?? order.platformCommission ?? 0,
-                )}
+                label="Platform Commission"
+                value={formatDA(order.commission ?? order.platformCommission ?? 0)}
               />
               <Separator />
               <div className="flex items-center justify-between font-bold text-[#0D1B2A]">
-                <span>Total</span>
-                <span className="text-[#FF6B00]">
-                  {formatDA(order.totalAmount)}
-                </span>
+                <span>Customer Total</span>
+                <span className="text-[#FF6B00]">{formatDA(order.totalAmount)}</span>
               </div>
             </CardContent>
           </Card>
@@ -597,22 +556,11 @@ export default function OrderDetailPage() {
   );
 }
 
-function FinRow({
-  label,
-  value,
-  discount,
-}: {
-  label: string;
-  value: string;
-  discount?: boolean;
-}) {
+function FinRow({ label, value, discount }: { label: string; value: string; discount?: boolean }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-slate-500">{label}</span>
-      <span
-        className={discount ? "text-green-600 font-medium" : "text-[#0D1B2A]"}>
-        {value}
-      </span>
+      <span className={discount ? 'text-green-600 font-medium' : 'text-[#0D1B2A]'}>{value}</span>
     </div>
   );
 }

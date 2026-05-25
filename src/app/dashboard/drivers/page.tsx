@@ -1,32 +1,32 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { apiGet, apiPatch } from "@/lib/api";
-import { useDebounce } from "@/hooks/useDebounce";
-import { formatDA, timeAgo, getInitials } from "@/lib/utils";
-import { DataTable, type Column } from "@/components/common/DataTable";
-import { StatusBadge } from "@/components/common/StatusBadge";
-import { Pagination } from "@/components/common/Pagination";
-import { ConfirmDialog } from "@/components/common/ConfirmDialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { apiGet, apiPatch, apiPost } from '@/lib/api';
+import { useDebounce } from '@/hooks/useDebounce';
+import { formatDA, timeAgo, getInitials } from '@/lib/utils';
+import { DataTable, type Column } from '@/components/common/DataTable';
+import { StatusBadge } from '@/components/common/StatusBadge';
+import { Pagination } from '@/components/common/Pagination';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Search,
   MoreHorizontal,
@@ -37,15 +37,15 @@ import {
   RotateCcw,
   Star,
   Truck,
-} from "lucide-react";
-import type { User } from "@/types";
+} from 'lucide-react';
+import type { User } from '@/types';
 
 const STATUSES = [
-  { value: "", label: "Tous les statuts" },
-  { value: "active", label: "Actif" },
-  { value: "pending_verification", label: "En attente vérif." },
-  { value: "suspended", label: "Suspendu" },
-  { value: "banned", label: "Banni" },
+  { value: '', label: 'Tous les statuts' },
+  { value: 'active', label: 'Actif' },
+  { value: 'pending_verification', label: 'En attente vérif.' },
+  { value: 'suspended', label: 'Suspendu' },
+  { value: 'banned', label: 'Banni' },
 ];
 
 interface DriversResponse {
@@ -64,8 +64,8 @@ export default function DriversPage() {
   const queryClient = useQueryClient();
 
   const [filters, setFilters] = useState({
-    accountStatus: "",
-    search: "",
+    accountStatus: '',
+    search: '',
     page: 1,
   });
   const debouncedSearch = useDebounce(filters.search, 500);
@@ -74,27 +74,22 @@ export default function DriversPage() {
     open: boolean;
     title: string;
     description: string;
-    variant: "danger" | "warning" | "default";
+    variant: 'danger' | 'warning' | 'default';
     onConfirm: () => Promise<void>;
   }>({
     open: false,
-    title: "",
-    description: "",
-    variant: "default",
+    title: '',
+    description: '',
+    variant: 'default',
     onConfirm: async () => {},
   });
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: [
-      "admin-drivers",
-      filters.accountStatus,
-      debouncedSearch,
-      filters.page,
-    ],
+    queryKey: ['admin-drivers', filters.accountStatus, debouncedSearch, filters.page],
     queryFn: () =>
-      apiGet<DriversResponse>("/admin/users", {
+      apiGet<DriversResponse>('/admin/users', {
         params: {
-          role: "driver",
+          role: 'driver',
           accountStatus: filters.accountStatus || undefined,
           search: debouncedSearch || undefined,
           page: filters.page,
@@ -115,43 +110,49 @@ export default function DriversPage() {
       id: string;
       accountStatus: string;
       reason?: string;
-    }) => apiPatch("/admin/users/" + id + "/status", { accountStatus, reason }),
-    onSuccess: () => {
-      toast.success("Statut mis à jour");
-      queryClient.invalidateQueries({ queryKey: ["admin-drivers"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    }) => apiPatch('/admin/users/' + id + '/status', { accountStatus, reason }),
+    onSuccess: (data) => {
+      console.log('[ADMIN-DRIVERS] Status update success:', data);
+      toast.success('Statut mis à jour avec succès');
+      queryClient.invalidateQueries({ queryKey: ['admin-drivers'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       refetch();
     },
-    onError: () => toast.error("Erreur lors de la mise à jour"),
+    onError: (error: any) => {
+      console.error('[ADMIN-DRIVERS] Status update error:', error);
+      const message =
+        error?.response?.data?.message || error?.message || 'Erreur lors de la mise à jour';
+      toast.error(message);
+    },
   });
 
   const verifyMutation = useMutation({
-    mutationFn: (id: string) => apiPatch("/admin/users/" + id + "/verify"),
-    onSuccess: () => {
-      toast.success("Livreur vérifié");
-      queryClient.invalidateQueries({ queryKey: ["admin-drivers"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    mutationFn: (id: string) => apiPost('/admin/users/' + id + '/verify', { action: 'verify' }),
+    onSuccess: (data) => {
+      console.log('[ADMIN-DRIVERS] Verify success:', data);
+      toast.success('Livreur vérifié et activé avec succès');
+      queryClient.invalidateQueries({ queryKey: ['admin-drivers'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       refetch();
     },
-    onError: () => toast.error("Erreur de vérification"),
+    onError: (error: any) => {
+      console.error('[ADMIN-DRIVERS] Verify error:', error);
+      const message = error?.response?.data?.message || error?.message || 'Erreur de vérification';
+      toast.error(message);
+    },
   });
 
   const hasFilters = filters.accountStatus || filters.search;
-  const resetFilters = () =>
-    setFilters({ accountStatus: "", search: "", page: 1 });
+  const resetFilters = () => setFilters({ accountStatus: '', search: '', page: 1 });
 
   const columns: Column<User>[] = [
     {
-      key: "driver",
-      header: "Livreur",
+      key: 'driver',
+      header: 'Livreur',
       cell: (u) => (
         <div className="flex items-center gap-3">
           {u.avatar?.url ? (
-            <img
-              src={u.avatar.url}
-              alt=""
-              className="h-10 w-10 rounded-full object-cover"
-            />
+            <img src={u.avatar.url} alt="" className="h-10 w-10 rounded-full object-cover" />
           ) : (
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-500 text-sm font-bold text-white">
               {getInitials(u.firstName, u.lastName)}
@@ -167,34 +168,30 @@ export default function DriversPage() {
       ),
     },
     {
-      key: "wilaya",
-      header: "Wilaya",
+      key: 'wilaya',
+      header: 'Wilaya',
       cell: (u) => <span className="text-sm text-slate-600">{u.wilaya}</span>,
     },
     {
-      key: "accountStatus",
-      header: "Statut",
+      key: 'accountStatus',
+      header: 'Statut',
       cell: (u) => <StatusBadge status={u.accountStatus} type="account" />,
     },
     {
-      key: "wallet",
-      header: "Solde",
+      key: 'wallet',
+      header: 'Solde',
       cell: (u) => (
-        <span className="text-sm font-medium text-[#FF6B00]">
-          {formatDA(u.wallet ?? 0)}
-        </span>
+        <span className="text-sm font-medium text-[#FF6B00]">{formatDA(u.wallet ?? 0)}</span>
       ),
     },
     {
-      key: "rating",
-      header: "Évaluation",
+      key: 'rating',
+      header: 'Évaluation',
       cell: (u) =>
         u.rating?.count > 0 ? (
           <div className="flex items-center gap-1">
             <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-            <span className="text-sm font-medium">
-              {u.rating.average.toFixed(1)}
-            </span>
+            <span className="text-sm font-medium">{u.rating.average.toFixed(1)}</span>
             <span className="text-xs text-slate-400">({u.rating.count})</span>
           </div>
         ) : (
@@ -202,15 +199,13 @@ export default function DriversPage() {
         ),
     },
     {
-      key: "createdAt",
-      header: "Inscrit",
-      cell: (u) => (
-        <span className="text-xs text-slate-400">{timeAgo(u.createdAt)}</span>
-      ),
+      key: 'createdAt',
+      header: 'Inscrit',
+      cell: (u) => <span className="text-xs text-slate-400">{timeAgo(u.createdAt)}</span>,
     },
     {
-      key: "actions",
-      header: "",
+      key: 'actions',
+      header: '',
       cell: (u) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -219,94 +214,93 @@ export default function DriversPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => router.push("/dashboard/users/" + u._id)}>
+            <DropdownMenuItem onClick={() => router.push('/dashboard/users/' + u._id)}>
               <Eye className="mr-2 h-4 w-4" /> Voir détails
             </DropdownMenuItem>
-            {u.accountStatus === "pending_verification" && (
+            {u.accountStatus === 'pending_verification' && (
               <DropdownMenuItem
                 onClick={() =>
                   setConfirmDialog({
                     open: true,
-                    title: "Vérifier ce livreur ?",
-                    description:
-                      u.firstName +
-                      " " +
-                      u.lastName +
-                      " sera marqué comme vérifié.",
-                    variant: "default",
+                    title: 'Vérifier ce livreur ?',
+                    description: u.firstName + ' ' + u.lastName + ' sera marqué comme vérifié.',
+                    variant: 'default',
                     onConfirm: async () => {
                       await verifyMutation.mutateAsync(u._id);
                     },
                   })
-                }>
+                }
+              >
                 <CheckCircle className="mr-2 h-4 w-4 text-green-600" /> Vérifier
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            {u.accountStatus !== "active" && (
+            {u.accountStatus !== 'active' && (
               <DropdownMenuItem
                 onClick={() =>
                   setConfirmDialog({
                     open: true,
-                    title: "Activer ce compte ?",
-                    description: "Le compte du livreur sera réactivé.",
-                    variant: "default",
+                    title: 'Activer ce compte ?',
+                    description: 'Le compte du livreur sera réactivé.',
+                    variant: 'default',
                     onConfirm: async () => {
                       await statusMutation.mutateAsync({
                         id: u._id,
-                        accountStatus: "active",
+                        accountStatus: 'active',
                       });
                     },
                   })
-                }>
+                }
+              >
                 <CheckCircle className="mr-2 h-4 w-4 text-green-600" /> Activer
               </DropdownMenuItem>
             )}
-            {u.accountStatus !== "suspended" && (
+            {u.accountStatus !== 'suspended' && (
               <DropdownMenuItem
                 onClick={() =>
                   setConfirmDialog({
                     open: true,
-                    title: "Suspendre ce compte ?",
+                    title: 'Suspendre ce compte ?',
                     description:
-                      "Le livreur ne pourra plus accéder temporairement à la plateforme.",
-                    variant: "warning",
+                      'Le livreur ne pourra plus accéder temporairement à la plateforme.',
+                    variant: 'warning',
                     onConfirm: async () => {
                       await statusMutation.mutateAsync({
                         id: u._id,
-                        accountStatus: "suspended",
+                        accountStatus: 'suspended',
                       });
                     },
                   })
-                }>
+                }
+              >
                 <Pause className="mr-2 h-4 w-4 text-orange-500" /> Suspendre
               </DropdownMenuItem>
             )}
-            {u.accountStatus !== "banned" && (
+            {u.accountStatus !== 'banned' && (
               <DropdownMenuItem
                 className="text-red-600"
                 onClick={() =>
                   setConfirmDialog({
                     open: true,
-                    title: "Bannir ce compte ?",
-                    description: "Attention : action irréversible.",
-                    variant: "danger",
+                    title: 'Bannir ce compte ?',
+                    description: 'Attention : action irréversible.',
+                    variant: 'danger',
                     onConfirm: async () => {
                       await statusMutation.mutateAsync({
                         id: u._id,
-                        accountStatus: "banned",
+                        accountStatus: 'banned',
                       });
                     },
                   })
-                }>
+                }
+              >
                 <Ban className="mr-2 h-4 w-4" /> Bannir
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
-      width: "50px",
+      width: '50px',
     },
   ];
 
@@ -316,7 +310,7 @@ export default function DriversPage() {
         <h1 className="text-2xl font-bold text-[#0D1B2A]">Livreurs</h1>
         <p className="text-sm text-slate-500">
           {pagination?.total ?? 0} livreur
-          {(pagination?.total ?? 0) > 1 ? "s" : ""} au total
+          {(pagination?.total ?? 0) > 1 ? 's' : ''} au total
         </p>
       </div>
 
@@ -327,9 +321,7 @@ export default function DriversPage() {
             placeholder="Rechercher par nom, téléphone..."
             className="pl-10 h-10"
             value={filters.search}
-            onChange={(e) =>
-              setFilters((p) => ({ ...p, search: e.target.value, page: 1 }))
-            }
+            onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value, page: 1 }))}
           />
         </div>
 
@@ -338,16 +330,17 @@ export default function DriversPage() {
           onValueChange={(v) =>
             setFilters((p) => ({
               ...p,
-              accountStatus: v === "all" ? "" : v,
+              accountStatus: v === 'all' ? '' : v,
               page: 1,
             }))
-          }>
+          }
+        >
           <SelectTrigger className="w-52 h-10">
             <SelectValue placeholder="Tous les statuts" />
           </SelectTrigger>
           <SelectContent>
             {STATUSES.map((s) => (
-              <SelectItem key={s.value || "all"} value={s.value || "all"}>
+              <SelectItem key={s.value || 'all'} value={s.value || 'all'}>
                 {s.label}
               </SelectItem>
             ))}
@@ -355,11 +348,7 @@ export default function DriversPage() {
         </Select>
 
         {hasFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={resetFilters}
-            className="text-slate-500">
+          <Button variant="ghost" size="sm" onClick={resetFilters} className="text-slate-500">
             <RotateCcw className="mr-1 h-3.5 w-3.5" /> Réinitialiser
           </Button>
         )}

@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { apiGet, apiPatch } from "@/lib/api";
+import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import {
   formatDA,
   formatDate,
@@ -132,7 +132,7 @@ export default function UserDetailPage() {
 
   const verifyMutation = useMutation({
     mutationFn: (body: { action: string; rejectionReason?: string }) =>
-      apiPatch("/admin/users/" + id + "/verify", body),
+      apiPost("/admin/users/" + id + "/verify", body),
     onSuccess: (_, variables) => {
       toast.success(
         variables.action === "reject"
