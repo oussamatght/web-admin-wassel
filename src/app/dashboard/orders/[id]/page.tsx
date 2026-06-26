@@ -39,6 +39,8 @@ const TIMELINE_STEPS: {
   { status: 'ready_for_pickup', label: 'Prête à enlever', icon: QrCode },
   { status: 'driver_selected', label: 'Livreur assigné', icon: Truck },
   { status: 'picked_up', label: 'Récupérée', icon: Package },
+  { status: 'client_tracking_active', label: 'Client en suivi', icon: Route },
+  { status: 'waiting_client_scan', label: 'Attente scan client', icon: QrCode },
   { status: 'in_delivery', label: 'En livraison', icon: Truck },
   { status: 'arrived', label: 'Arrivée client', icon: MapPin },
   { status: 'delivered', label: 'Livrée', icon: Check },
@@ -52,6 +54,8 @@ const STATUS_ORDER: OrderStatus[] = [
   'ready_for_pickup',
   'driver_selected',
   'picked_up',
+  'client_tracking_active',
+  'waiting_client_scan',
   'in_delivery',
   'arrived',
   'delivered',
@@ -114,6 +118,8 @@ export default function OrderDetailPage() {
     'ready_for_pickup',
     'driver_selected',
     'picked_up',
+    'client_tracking_active',
+    'waiting_client_scan',
     'in_delivery',
     'arrived',
     'delivered',
@@ -158,6 +164,13 @@ export default function OrderDetailPage() {
           icon: Truck,
         };
       case 'picked_up':
+      case 'client_tracking_active':
+      case 'waiting_client_scan':
+        return {
+          title: 'En route client',
+          hint: 'Phase 2 active — client en suivi direct',
+          icon: Route,
+        };
       case 'in_delivery':
         return {
           title: 'En route client',

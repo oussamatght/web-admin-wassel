@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { apiGet, apiPatch, apiPost } from "@/lib/api";
+import { apiGet, apiPatch, apiPost, apiDelete } from "@/lib/api";
 import {
   formatDA,
   formatDate,
@@ -28,6 +28,7 @@ import {
   Ban,
   Star,
   ShoppingBag,
+  Trash2,
   Package,
   Truck,
   Wallet,
@@ -144,6 +145,16 @@ export default function UserDetailPage() {
       setRejectDialogOpen(false);
     },
     onError: () => toast.error("Erreur de vérification"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => apiDelete("/admin/users/" + id),
+    onSuccess: () => {
+      toast.success("Utilisateur supprimé définitivement");
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      router.push("/dashboard/users");
+    },
+    onError: () => toast.error("Erreur lors de la suppression"),
   });
 
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -393,6 +404,28 @@ export default function UserDetailPage() {
                   <Ban className="mr-1 h-4 w-4" /> Bannir
                 </Button>
               )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-red-400 text-red-700 hover:bg-red-50"
+                onClick={() =>
+                  setConfirmDialog({
+                    open: true,
+                    title: "Supprimer cet utilisateur ?",
+                    description:
+                      "Attention : " +
+                      user.firstName +
+                      " " +
+                      user.lastName +
+                      " sera définitivement supprimé de la base de données. Action irréversible.",
+                    variant: "danger",
+                    onConfirm: async () => {
+                      await deleteMutation.mutateAsync();
+                    },
+                  })
+                }>
+                <Trash2 className="mr-1 h-4 w-4" /> Supprimer
+              </Button>
             </div>
           </div>
         </CardContent>

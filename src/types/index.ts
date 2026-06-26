@@ -18,6 +18,8 @@ export type OrderStatus =
   | 'ready_for_pickup'
   | 'driver_selected'
   | 'picked_up'
+  | 'client_tracking_active'
+  | 'waiting_client_scan'
   | 'in_delivery'
   | 'arrived'
   | 'delivered'

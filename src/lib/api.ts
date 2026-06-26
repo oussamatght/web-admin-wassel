@@ -1,7 +1,13 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/store/authStore'
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api'
+// Resolve API base URL at runtime. Prefer explicit NEXT_PUBLIC_API_URL, else
+// fall back to the same origin + /api when running in the browser so a
+// deployed frontend talks to the same host by default. Finally, use
+// localhost for local development when running server-side.
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'http://localhost:5000/api');
 
 const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,

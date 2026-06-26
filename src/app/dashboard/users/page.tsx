@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { apiGet, apiPatch, apiPost } from "@/lib/api";
+import { apiGet, apiPatch, apiPost, apiDelete } from "@/lib/api";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   formatDA,
@@ -44,6 +44,7 @@ import {
   Ban,
   RotateCcw,
   Star,
+  Trash2,
   Users,
 } from "lucide-react";
 import type { User } from "@/types";
@@ -152,6 +153,16 @@ export default function UsersPage() {
       refetch();
     },
     onError: () => toast.error("Erreur de vérification"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiDelete("/admin/users/" + id),
+    onSuccess: () => {
+      toast.success("Utilisateur supprimé définitivement");
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      refetch();
+    },
+    onError: () => toast.error("Erreur lors de la suppression"),
   });
 
   const hasFilters = filters.role || filters.accountStatus || filters.search;
@@ -354,6 +365,27 @@ export default function UsersPage() {
                 <Ban className="mr-2 h-4 w-4" /> Bannir
               </DropdownMenuItem>
             )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-red-700"
+              onClick={() =>
+                setConfirmDialog({
+                  open: true,
+                  title: "Supprimer cet utilisateur ?",
+                  description:
+                    "Attention : " +
+                    u.firstName +
+                    " " +
+                    u.lastName +
+                    " sera définitivement supprimé de la base de données. Action irréversible.",
+                  variant: "danger",
+                  onConfirm: async () => {
+                    await deleteMutation.mutateAsync(u._id);
+                  },
+                })
+              }>
+              <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),

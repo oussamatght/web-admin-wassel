@@ -40,6 +40,16 @@ import {
 } from 'lucide-react';
 import type { User } from '@/types';
 
+type ApiMutationError = {
+  response?: { data?: { message?: string } };
+  message?: string;
+};
+
+function getApiErrorMessage(error: unknown, fallback: string): string {
+  const err = error as ApiMutationError;
+  return err.response?.data?.message || err.message || fallback;
+}
+
 const STATUSES = [
   { value: '', label: 'Tous les statuts' },
   { value: 'active', label: 'Actif' },
@@ -118,11 +128,9 @@ export default function DriversPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       refetch();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error('[ADMIN-DRIVERS] Status update error:', error);
-      const message =
-        error?.response?.data?.message || error?.message || 'Erreur lors de la mise à jour';
-      toast.error(message);
+      toast.error(getApiErrorMessage(error, 'Erreur lors de la mise à jour'));
     },
   });
 
@@ -135,10 +143,9 @@ export default function DriversPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       refetch();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error('[ADMIN-DRIVERS] Verify error:', error);
-      const message = error?.response?.data?.message || error?.message || 'Erreur de vérification';
-      toast.error(message);
+      toast.error(getApiErrorMessage(error, 'Erreur de vérification'));
     },
   });
 
@@ -383,3 +390,4 @@ export default function DriversPage() {
     </div>
   );
 }
+
