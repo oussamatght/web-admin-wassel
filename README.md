@@ -1,4 +1,4 @@
-⚠️ **PRIVATE FREELANCE PROJECT**
+ **FREELANCE PROJECT**
 
 This is a private freelance web development project. **Unauthorized access or use is strictly prohibited.**
 
