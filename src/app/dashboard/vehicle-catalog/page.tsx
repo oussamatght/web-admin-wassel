@@ -36,6 +36,99 @@ interface VehicleRecord {
   group?: string;
 }
 
+interface CsvValidationIssue {
+  row: number;
+  status: "VALID" | "WARNING" | "INVALID" | "DUPLICATE";
+  field: string;
+  reason: string;
+}
+
+interface CsvImportSummary {
+  total: number;
+  valid: number;
+  warnings: number;
+  invalid: number;
+  duplicates: number;
+  created: number;
+  updated: number;
+  ignored: number;
+  rows?: number;
+  errors?: CsvValidationIssue[];
+}
+
+const CANONICAL_CSV_COLUMNS = [
+  "brand",
+  "model",
+  "version",
+  "engineCode",
+  "engineFamily",
+  "vinPrefix",
+  "vinRule",
+  "typeMine",
+  "generation",
+  "motorisation",
+  "yearFrom",
+  "yearTo",
+  "group",
+];
+
+const normalizeCsvHeader = (header: string) => {
+  const cleaned = header.trim().toLowerCase();
+  const canonical = CANONICAL_CSV_COLUMNS.find(
+    (column) => column.toLowerCase() === cleaned,
+  );
+  if (canonical) return canonical;
+  if (cleaned === "startyear") return "yearFrom";
+  if (cleaned === "endyear") return "yearTo";
+  if (cleaned === "fueltype") return "fuelType";
+  return cleaned;
+};
+
+const normalizeCsvRowForSubmission = (row: Record<string, string | number>) => {
+  const normalized: Record<string, string | number> = {};
+
+  Object.entries(row).forEach(([rawKey, value]) => {
+    const key = normalizeCsvHeader(rawKey);
+    if (
+      key === "yearfrom" &&
+      !Object.prototype.hasOwnProperty.call(normalized, "yearFrom")
+    ) {
+      normalized.yearFrom = value;
+      return;
+    }
+    if (
+      key === "yearto" &&
+      !Object.prototype.hasOwnProperty.call(normalized, "yearTo")
+    ) {
+      normalized.yearTo = value;
+      return;
+    }
+    if (key === "fueltype") {
+      normalized.fuelType = value;
+      return;
+    }
+    if (key === "displacement") {
+      normalized.displacement = value;
+      return;
+    }
+    if (CANONICAL_CSV_COLUMNS.includes(key)) {
+      normalized[key] = value;
+    }
+  });
+
+  if (
+    Object.prototype.hasOwnProperty.call(row, "startYear") ||
+    Object.prototype.hasOwnProperty.call(row, "endYear")
+  ) {
+    if (!normalized.yearFrom && row.startYear !== undefined)
+      normalized.yearFrom = row.startYear;
+    if (!normalized.yearTo && row.endYear !== undefined)
+      normalized.yearTo = row.endYear;
+  }
+
+  return normalized;
+};
+
 const emptyForm = {
   brand: "",
   model: "",
@@ -85,7 +178,7 @@ function parseCsvText(text: string) {
     .filter(Boolean);
   if (lines.length < 2) return [];
 
-  const headers = parseCsvLine(lines[0]).map((header) => header.toLowerCase());
+  const headers = parseCsvLine(lines[0]).map(normalizeCsvHeader);
   const rows = lines.slice(1).map((line, index) => {
     const values = parseCsvLine(line);
     const row: Record<string, string> = {};
@@ -107,13 +200,11 @@ export default function VehicleCatalogPage() {
   const [csvRows, setCsvRows] = useState<
     Array<Record<string, string | number>>
   >([]);
-  const [csvImportSummary, setCsvImportSummary] = useState<null | {
-    created: number;
-    updated: number;
-    skipped: number;
-    invalid: number;
-    rows: number;
-  }>(null);
+  const [csvImportSummary, setCsvImportSummary] =
+    useState<null | CsvImportSummary>(null);
+  const [csvValidationRows, setCsvValidationRows] = useState<
+    CsvValidationIssue[]
+  >([]);
   const [vinLookup, setVinLookup] = useState("");
   const [vinResult, setVinResult] = useState<null | {
     vin: string;
@@ -178,11 +269,25 @@ export default function VehicleCatalogPage() {
   const importMutation = useMutation({
     mutationFn: (rows: Array<Record<string, string | number>>) =>
       apiPost<{
-        summary: typeof csvImportSummary;
-        invalidRows: Array<{ row: number; field: string; reason: string }>;
+        summary: CsvImportSummary;
+        invalidRows: CsvValidationIssue[];
+        validationResults: CsvValidationIssue[];
       }>("/admin/vehicles/import-csv", { rows }),
     onSuccess: (data) => {
-      setCsvImportSummary(data.summary ?? null);
+      const normalizedSummary = {
+        total: data.summary?.total ?? data.summary?.rows ?? csvRows.length,
+        valid: data.summary?.valid ?? 0,
+        warnings: data.summary?.warnings ?? 0,
+        invalid: data.summary?.invalid ?? 0,
+        duplicates: data.summary?.duplicates ?? 0,
+        created: data.summary?.created ?? 0,
+        updated: data.summary?.updated ?? 0,
+        ignored: data.summary?.ignored ?? 0,
+        rows: data.summary?.rows ?? csvRows.length,
+        errors: data.validationResults ?? data.invalidRows ?? [],
+      };
+      setCsvImportSummary(normalizedSummary);
+      setCsvValidationRows(normalizedSummary.errors ?? []);
       queryClient.invalidateQueries({ queryKey: ["vehicle-catalog"] });
       toast.success("Import CSV terminé");
     },
@@ -202,7 +307,10 @@ export default function VehicleCatalogPage() {
       toast.error("Aucune donnée CSV valide à importer.");
       return;
     }
-    importMutation.mutate(csvRows);
+    const submittedRows = csvRows.map((row) =>
+      normalizeCsvRowForSubmission(row),
+    );
+    importMutation.mutate(submittedRows);
   };
 
   const lookupVin = async () => {
@@ -611,11 +719,27 @@ export default function VehicleCatalogPage() {
               )}
 
               {csvImportSummary && (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-                  Import terminé : {csvImportSummary.created} créés,{" "}
-                  {csvImportSummary.updated} mis à jour,{" "}
-                  {csvImportSummary.skipped} ignorés, {csvImportSummary.invalid}{" "}
-                  invalides.
+                <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                  <div>
+                    CSV TEST — Total: {csvImportSummary.total} | Valid:{" "}
+                    {csvImportSummary.valid} | Invalid:{" "}
+                    {csvImportSummary.invalid} | Duplicates:{" "}
+                    {csvImportSummary.duplicates} | Created:{" "}
+                    {csvImportSummary.created} | Updated:{" "}
+                    {csvImportSummary.updated} | Ignored:{" "}
+                    {csvImportSummary.ignored} | Warnings:{" "}
+                    {csvImportSummary.warnings}
+                  </div>
+                  {csvValidationRows.length > 0 && (
+                    <div className="space-y-1 border-t border-emerald-200 pt-2 text-xs">
+                      {csvValidationRows.map((issue, index) => (
+                        <div key={`${issue.row}-${index}`}>
+                          Row {issue.row}: Status: {issue.status} | Field:{" "}
+                          {issue.field} | Error: {issue.reason}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
