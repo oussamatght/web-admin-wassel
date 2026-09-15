@@ -1,31 +1,32 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { useAuthStore } from "@/store/authStore";
+import { WasslaLogo } from "@/components/common/WasslaLogo";
+import { Badge } from "@/components/ui/badge";
+import { useSocketInvalidate } from "@/hooks/useSocket";
 import { apiGet, apiPost } from "@/lib/api";
 import { getInitials, getRoleLabel } from "@/lib/utils";
-import { useSocketInvalidate } from "@/hooks/useSocket";
-import { Badge } from "@/components/ui/badge";
-import { WasslaLogo } from "@/components/common/WasslaLogo";
+import { useAuthStore } from "@/store/authStore";
+import { useQuery } from "@tanstack/react-query";
 import {
-  LayoutDashboard,
-  Users,
-  Truck,
-  Package,
-  ShoppingCart,
   AlertTriangle,
-  Wrench,
-  Route,
-  ShieldAlert,
-  DollarSign,
-  Tag,
   Bell,
+  CarFront,
+  DollarSign,
+  LayoutDashboard,
   LogOut,
+  Package,
+  Route,
   Settings,
+  ShieldAlert,
+  ShoppingCart,
+  Tag,
+  Truck,
   UserCheck,
+  Users,
+  Wrench,
 } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 
 interface NavItem {
   href: string;
@@ -70,6 +71,11 @@ const navGroups: NavGroup[] = [
         icon: Package,
         label: "Produits",
         badgeKey: "pendingProducts",
+      },
+      {
+        href: "/dashboard/vehicle-catalog",
+        icon: CarFront,
+        label: "Catalogue VIN",
       },
       {
         href: "/dashboard/orders",
